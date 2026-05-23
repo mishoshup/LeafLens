@@ -7,11 +7,11 @@ void main() {
   group('SensorErrorBoundary', () {
     testWidgets('renders child widget normally', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: SensorErrorBoundary(
               label: 'Temperature',
-              child: const Text('28.5 °C'),
+              child: Text('28.5 °C'),
             ),
           ),
         ),
@@ -23,11 +23,11 @@ void main() {
 
     testWidgets('renders with any label', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: SensorErrorBoundary(
               label: 'Humidity',
-              child: const Text('65%'),
+              child: Text('65%'),
             ),
           ),
         ),
@@ -36,13 +36,15 @@ void main() {
       expect(find.text('65%'), findsOneWidget);
     });
 
-    testWidgets('custom label is not displayed in normal state', (tester) async {
+    testWidgets('custom label is not displayed in normal state', (
+      tester,
+    ) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: SensorErrorBoundary(
               label: 'Soil Moisture',
-              child: const Text('54%'),
+              child: Text('54%'),
             ),
           ),
         ),

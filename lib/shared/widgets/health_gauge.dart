@@ -9,14 +9,18 @@ import 'package:leaflens/features/dashboard/domain/growth_health_score.dart';
 /// Green (optimal) → yellow (caution) → red (critical).
 /// Transitions the arc color smoothly as score drops.
 class HealthGauge extends StatelessWidget {
-  final HealthScoreResult result;
-  final double size;
-
+  /// Creates a [HealthGauge] displaying the given [result].
   const HealthGauge({
-    super.key,
     required this.result,
+    super.key,
     this.size = 200,
   });
+
+  /// The computed health score result to display.
+  final HealthScoreResult result;
+
+  /// The diameter of the gauge in logical pixels.
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -78,16 +82,16 @@ class HealthGauge extends StatelessWidget {
       };
 }
 
+/// Custom painter that draws the gauge ring arc.
 class _RingPainter extends CustomPainter {
-  final double score;
-  final Color color;
-  final Color bgColor;
-
   const _RingPainter({
     required this.score,
     required this.color,
     required this.bgColor,
   });
+  final double score;
+  final Color color;
+  final Color bgColor;
 
   @override
   void paint(Canvas canvas, Size size) {

@@ -51,7 +51,10 @@ extension on BuildContext {
   );
 }
 
+/// Sign-up screen with full name, email, phone, password fields
+/// and terms-of-service acceptance.
 class SignUpPage extends ConsumerStatefulWidget {
+  /// Creates a [SignUpPage] widget.
   const SignUpPage({super.key});
 
   @override
@@ -92,7 +95,7 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
       await repo.register(_emailCtrl.text.trim(), _passwordCtrl.text);
       ref.invalidate(authStateProvider);
       if (mounted) context.go('/dashboard');
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -225,9 +228,8 @@ class _OrDivider extends StatelessWidget {
 }
 
 class _NameField extends StatelessWidget {
-  final TextEditingController controller;
-
   const _NameField({required this.controller});
+  final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -240,9 +242,8 @@ class _NameField extends StatelessWidget {
 }
 
 class _EmailField extends StatelessWidget {
-  final TextEditingController controller;
-
   const _EmailField({required this.controller});
+  final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -256,9 +257,8 @@ class _EmailField extends StatelessWidget {
 }
 
 class _PhoneField extends StatelessWidget {
-  final TextEditingController controller;
-
   const _PhoneField({required this.controller});
+  final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -266,21 +266,21 @@ class _PhoneField extends StatelessWidget {
       hint: 'Phone Number',
       controller: controller,
       keyboardType: TextInputType.phone,
-      validator: (v) => (v == null || v.isEmpty) ? 'Enter your phone number' : null,
+      validator: (v) =>
+          (v == null || v.isEmpty) ? 'Enter your phone number' : null,
     );
   }
 }
 
 class _PasswordField extends StatelessWidget {
-  final TextEditingController controller;
-  final bool obscure;
-  final VoidCallback onToggle;
-
   const _PasswordField({
     required this.controller,
     required this.obscure,
     required this.onToggle,
   });
+  final TextEditingController controller;
+  final bool obscure;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -288,8 +288,7 @@ class _PasswordField extends StatelessWidget {
       hint: 'Password',
       controller: controller,
       obscureText: obscure,
-      validator: (v) =>
-          (v == null || v.isEmpty) ? 'Enter your password' : null,
+      validator: (v) => (v == null || v.isEmpty) ? 'Enter your password' : null,
       suffixIcon: IconButton(
         icon: Icon(
           obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
@@ -301,10 +300,9 @@ class _PasswordField extends StatelessWidget {
 }
 
 class _TermsCheckbox extends StatelessWidget {
+  const _TermsCheckbox({required this.agreed, required this.onChanged});
   final bool agreed;
   final ValueChanged<bool> onChanged;
-
-  const _TermsCheckbox({required this.agreed, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {
@@ -333,13 +331,11 @@ class _TermsCheckbox extends StatelessWidget {
                 TextSpan(
                   text: 'Terms of Service',
                   style: context.termsLink,
-                  recognizer: null,
                 ),
                 const TextSpan(text: ' and '),
                 TextSpan(
                   text: 'Privacy Policy',
                   style: context.termsLink,
-                  recognizer: null,
                 ),
               ],
             ),
@@ -351,10 +347,9 @@ class _TermsCheckbox extends StatelessWidget {
 }
 
 class _SignUpButton extends StatelessWidget {
+  const _SignUpButton({required this.loading, required this.onPressed});
   final bool loading;
   final VoidCallback onPressed;
-
-  const _SignUpButton({required this.loading, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {

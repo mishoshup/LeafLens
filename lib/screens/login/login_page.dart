@@ -8,14 +8,15 @@ import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
 import 'package:leaflens/shared/widgets/app_text_field.dart';
 import 'package:leaflens/theme/app_colors.dart';
 
-// Per-screen extensions keep build() readable without global namespace pollution.
+/// Per-screen extensions keep build() readable without
+/// global namespace pollution.
 extension on BuildContext {
   ColorScheme get colors => Theme.of(this).colorScheme;
   TextTheme get textTheme => Theme.of(this).textTheme;
 
   TextStyle get loginTitleStyle => const TextStyle(
     fontWeight: FontWeight.w600,
-    fontSize: 38,
+    fontSize: 46,
     color: AppColors.deepGreen,
   );
 
@@ -41,7 +42,9 @@ extension on BuildContext {
   );
 }
 
+/// Login screen with email/password form and Google sign-in placeholder.
 class LoginPage extends ConsumerStatefulWidget {
+  /// Creates a [LoginPage] widget.
   const LoginPage({super.key});
 
   @override
@@ -71,7 +74,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
       await repo.login(_emailCtrl.text.trim(), _passwordCtrl.text);
       ref.invalidate(authStateProvider);
       if (mounted) context.go('/dashboard');
-    } catch (e) {
+    } on Exception catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -90,34 +93,34 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Scaffold(
       backgroundColor: AppColors.offWhite,
       body: SafeArea(
-      child: Center(
-        child: Form(
-          key: _formKey,
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Center(child: _LoginHeader()),
-                const _GoogleSignInButton(),
-                const _OrDivider(),
-                _EmailField(controller: _emailCtrl),
-                const SizedBox(height: 12),
-                _PasswordField(
-                  controller: _passwordCtrl,
-                  obscure: _obscurePassword,
-                  onToggle: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                ),
-                const SizedBox(height: 28),
-                _LoginButton(loading: _loading, onPressed: _handleLogin),
-                const SizedBox(height: 12),
-                const _SignUpRow(),
-              ],
+        child: Center(
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Center(child: _LoginHeader()),
+                  const _GoogleSignInButton(),
+                  const _OrDivider(),
+                  _EmailField(controller: _emailCtrl),
+                  const SizedBox(height: 12),
+                  _PasswordField(
+                    controller: _passwordCtrl,
+                    obscure: _obscurePassword,
+                    onToggle: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                  const SizedBox(height: 28),
+                  _LoginButton(loading: _loading, onPressed: _handleLogin),
+                  const SizedBox(height: 12),
+                  const _SignUpRow(),
+                ],
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -127,14 +130,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 // Private widgets
 //
 
- class _LoginHeader extends StatelessWidget {
-       const _LoginHeader();
+class _LoginHeader extends StatelessWidget {
+  const _LoginHeader();
 
-       @override
-       Widget build(BuildContext context) {
-         return Text('Login', style: context.loginTitleStyle);
-       }
-     }
+  @override
+  Widget build(BuildContext context) {
+    return Text('Login', style: context.loginTitleStyle);
+  }
+}
 
 class _GoogleSignInButton extends StatelessWidget {
   const _GoogleSignInButton();
@@ -195,9 +198,8 @@ class _OrDivider extends StatelessWidget {
 }
 
 class _EmailField extends StatelessWidget {
-  final TextEditingController controller;
-
   const _EmailField({required this.controller});
+  final TextEditingController controller;
 
   @override
   Widget build(BuildContext context) {
@@ -211,15 +213,14 @@ class _EmailField extends StatelessWidget {
 }
 
 class _PasswordField extends StatelessWidget {
-  final TextEditingController controller;
-  final bool obscure;
-  final VoidCallback onToggle;
-
   const _PasswordField({
     required this.controller,
     required this.obscure,
     required this.onToggle,
   });
+  final TextEditingController controller;
+  final bool obscure;
+  final VoidCallback onToggle;
 
   @override
   Widget build(BuildContext context) {
@@ -239,10 +240,9 @@ class _PasswordField extends StatelessWidget {
 }
 
 class _LoginButton extends StatelessWidget {
+  const _LoginButton({required this.loading, required this.onPressed});
   final bool loading;
   final VoidCallback onPressed;
-
-  const _LoginButton({required this.loading, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {

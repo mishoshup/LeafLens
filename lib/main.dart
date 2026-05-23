@@ -7,6 +7,10 @@ import 'package:leaflens/app.dart';
 import 'package:leaflens/core/config/app_config.dart';
 import 'package:leaflens/theme/app_theme.dart';
 
+/// LeafLens application entry point.
+///
+/// Initializes Flutter bindings, configures error handlers, opens the Hive
+/// telemetry cache box, and launches the app inside a [ProviderScope].
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -32,7 +36,11 @@ void main() async {
   );
 }
 
+/// Root MaterialApp widget for LeafLens.
+///
+/// Uses the GoRouter for navigation and the [AppTheme.light] theme.
 class LeafLensApp extends ConsumerWidget {
+  /// Creates a [LeafLensApp] widget.
   const LeafLensApp({super.key});
 
   @override

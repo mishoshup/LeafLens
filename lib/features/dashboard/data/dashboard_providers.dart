@@ -1,19 +1,19 @@
-import 'package:riverpod_annotation/riverpod_annotation.dart';
-
 import 'package:leaflens/core/network/api_client.dart';
 import 'package:leaflens/core/network/ws_client.dart';
 import 'package:leaflens/features/auth/data/auth_repository.dart';
 import 'package:leaflens/features/dashboard/domain/dashboard_update.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'dashboard_providers.g.dart';
 
 /// Manages the WebSocket connection lifecycle for dashboard streaming.
 class DashboardRepository {
+  /// Creates a [DashboardRepository] backed by the given
+  /// [ApiClient] and [WsClient].
+  DashboardRepository(this._api, this._ws);
   final ApiClient _api;
   final WsClient _ws;
   Stream<DashboardUpdate>? _stream;
-
-  DashboardRepository(this._api, this._ws);
 
   /// Connect to FastAPI WS and start receiving dashboard updates.
   Stream<DashboardUpdate> connect(String token) {
@@ -36,6 +36,7 @@ class DashboardRepository {
     return _api.get('/api/telemetry/$key', params: {'days': '$days'});
   }
 
+  /// Dispose of the WebSocket connection and associated resources.
   void dispose() {
     _ws.dispose();
   }
@@ -43,12 +44,15 @@ class DashboardRepository {
 
 // ── Providers ────────────────────────────────────────────
 
+/// Provides the [DashboardRepository] used for streaming and RPC calls.
 @riverpod
 DashboardRepository dashboardRepository(Ref ref) {
   final api = ref.read(apiClientProvider);
   return DashboardRepository(api, WsClient());
 }
 
+/// Provides a live stream of [DashboardUpdate] events from the WebSocket.
+/// Returns an empty stream when the user is not authenticated.
 @riverpod
 Stream<DashboardUpdate> dashboardStream(Ref ref) {
   final repo = ref.read(dashboardRepositoryProvider);
@@ -60,12 +64,14 @@ Stream<DashboardUpdate> dashboardStream(Ref ref) {
   return repo.connect(token);
 }
 
+/// Persisted provider that attempts to restore the user's JWT from the
+/// secure keychain on app startup. Keeps the value alive across hot restarts.
 @Riverpod(keepAlive: true)
 Future<String?> authState(Ref ref) async {
   final repo = ref.read(authRepositoryProvider);
   final token = await repo.tryRestore();
   if (token != null) {
-    ref.read(apiClientProvider).setToken(token);
+    ref.read(apiClientProvider).token = token;
   }
   return token;
 }

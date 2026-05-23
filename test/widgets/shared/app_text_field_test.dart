@@ -7,7 +7,9 @@ void main() {
   group('AppTextField', () {
     testWidgets('renders with hint text', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: AppTextField(hint: 'Email'))),
+        const MaterialApp(
+          home: Scaffold(body: AppTextField(hint: 'Email')),
+        ),
       );
 
       expect(find.text('Email'), findsOneWidget);
@@ -15,7 +17,7 @@ void main() {
 
     testWidgets('renders without hint when omitted', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: const AppTextField())),
+        const MaterialApp(home: Scaffold(body: AppTextField())),
       );
 
       expect(find.byType(TextFormField), findsOneWidget);
@@ -23,11 +25,11 @@ void main() {
 
     testWidgets('renders with prefix icon', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppTextField(
               hint: 'Name',
-              prefixIcon: const Icon(Icons.person),
+              prefixIcon: Icon(Icons.person),
             ),
           ),
         ),
@@ -38,11 +40,11 @@ void main() {
 
     testWidgets('renders with suffix icon', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppTextField(
               hint: 'Password',
-              suffixIcon: const Icon(Icons.visibility_off),
+              suffixIcon: Icon(Icons.visibility_off),
             ),
           ),
         ),
@@ -53,7 +55,7 @@ void main() {
 
     testWidgets('obscures text input visually', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppTextField(obscureText: true),
           ),
@@ -70,7 +72,7 @@ void main() {
 
     testWidgets('accepts typed input', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppTextField(hint: 'Name'),
           ),
@@ -99,7 +101,7 @@ void main() {
 
     testWidgets('uses email keyboard type', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppTextField(
               hint: 'Email',

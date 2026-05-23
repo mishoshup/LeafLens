@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 
 /// LEAFLENS Design System — Typography
 /// Single font: Lexend (variable, embedded in binary).
-/// Weights: Light 300, Regular 400, Medium 500, SemiBold 600, Bold 700, ExtraBold 800.
+/// Weights: Light 300, Regular 400, Medium 500,
+/// SemiBold 600, Bold 700, ExtraBold 800.
 class AppTypography {
   AppTypography._();
 

@@ -8,7 +8,11 @@ void main() {
   group('StatusBadge', () {
     testWidgets('renders Optimal label with green color', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: StatusBadge(status: HealthStatus.optimal))),
+        const MaterialApp(
+          home: Scaffold(
+            body: StatusBadge(status: HealthStatus.optimal),
+          ),
+        ),
       );
 
       expect(find.text('Optimal'), findsOneWidget);
@@ -17,7 +21,11 @@ void main() {
 
     testWidgets('renders Moderate label', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: StatusBadge(status: HealthStatus.moderate))),
+        const MaterialApp(
+          home: Scaffold(
+            body: StatusBadge(status: HealthStatus.moderate),
+          ),
+        ),
       );
 
       expect(find.text('Moderate'), findsOneWidget);
@@ -25,7 +33,11 @@ void main() {
 
     testWidgets('renders Caution label', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: StatusBadge(status: HealthStatus.caution))),
+        const MaterialApp(
+          home: Scaffold(
+            body: StatusBadge(status: HealthStatus.caution),
+          ),
+        ),
       );
 
       expect(find.text('Caution'), findsOneWidget);
@@ -33,7 +45,11 @@ void main() {
 
     testWidgets('renders Danger label', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: StatusBadge(status: HealthStatus.danger))),
+        const MaterialApp(
+          home: Scaffold(
+            body: StatusBadge(status: HealthStatus.danger),
+          ),
+        ),
       );
 
       expect(find.text('Danger'), findsOneWidget);
@@ -41,7 +57,11 @@ void main() {
 
     testWidgets('renders Critical label', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: StatusBadge(status: HealthStatus.critical))),
+        const MaterialApp(
+          home: Scaffold(
+            body: StatusBadge(status: HealthStatus.critical),
+          ),
+        ),
       );
 
       expect(find.text('Critical'), findsOneWidget);
@@ -50,7 +70,9 @@ void main() {
     testWidgets('renders all statuses without error', (tester) async {
       for (final status in HealthStatus.values) {
         await tester.pumpWidget(
-          MaterialApp(home: Scaffold(body: StatusBadge(status: status))),
+          MaterialApp(
+            home: Scaffold(body: StatusBadge(status: status)),
+          ),
         );
 
         // No red sliver error thrown means widget built fine

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:leaflens/features/dashboard/domain/growth_health_score.dart';
-import 'package:leaflens/features/dashboard/domain/sensor_key.dart';
 import 'package:leaflens/shared/widgets/health_gauge.dart';
 
 void main() {
@@ -91,7 +90,10 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: HealthGauge(result: result(75, HealthStatus.moderate), size: 150),
+            body: HealthGauge(
+              result: result(75, HealthStatus.moderate),
+              size: 150,
+            ),
           ),
         ),
       );

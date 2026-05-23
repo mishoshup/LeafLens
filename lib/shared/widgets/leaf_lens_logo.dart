@@ -6,6 +6,7 @@ class LeafLensLogo extends StatelessWidget {
   // final double width;
   // final double height;
 
+  /// Creates a [LeafLensLogo] widget.
   const LeafLensLogo({
     super.key,
     // this.width = 156,

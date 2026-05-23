@@ -10,35 +10,41 @@ import 'package:leaflens/core/errors/failures.dart';
 /// Attaches user JWT to every request if available.
 /// Throws typed Failures that Riverpod providers catch in the UI layer.
 class ApiClient {
-  final String baseUrl;
-  String? _token;
-
+  /// Creates an [ApiClient] with an optional custom [baseUrl].
+  /// Defaults to [AppConfig.apiUrl].
   ApiClient({String? baseUrl}) : baseUrl = baseUrl ?? AppConfig.apiUrl;
 
-  /// Set the user JWT after login/register.
-  void setToken(String? token) => _token = token;
+  /// The base URL for all HTTP requests (no trailing slash).
+  final String baseUrl;
 
-  /// Stored user JWT.
-  String? get token => _token;
+  /// The JWT token to attach as a Bearer header, or null if not authenticated.
+  String? token;
 
   Map<String, String> get _headers {
     final h = <String, String>{'Content-Type': 'application/json'};
-    if (_token != null) {
-      h['Authorization'] = 'Bearer $_token';
+    if (token != null) {
+      h['Authorization'] = 'Bearer $token';
     }
     return h;
   }
 
-  Future<Map<String, dynamic>> get(String path,
-      {Map<String, String>? params}) async {
-    final uri =
-        Uri.parse('$baseUrl$path').replace(queryParameters: params);
+  /// Sends a GET request to [path] with optional query [params].
+  /// Returns the decoded JSON body as a map.
+  Future<Map<String, dynamic>> get(
+    String path, {
+    Map<String, String>? params,
+  }) async {
+    final uri = Uri.parse('$baseUrl$path').replace(queryParameters: params);
     final response = await http.get(uri, headers: _headers);
     return _handle(response);
   }
 
-  Future<Map<String, dynamic>> post(String path,
-      {Map<String, dynamic>? body}) async {
+  /// Sends a POST request to [path] with an optional JSON [body].
+  /// Uses the auth header if [token] is set.
+  Future<Map<String, dynamic>> post(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
     final uri = Uri.parse('$baseUrl$path');
     final response = await http.post(
       uri,
@@ -49,8 +55,10 @@ class ApiClient {
   }
 
   /// POST without auth header (for login/register).
-  Future<Map<String, dynamic>> postPublic(String path,
-      {Map<String, dynamic>? body}) async {
+  Future<Map<String, dynamic>> postPublic(
+    String path, {
+    Map<String, dynamic>? body,
+  }) async {
     final uri = Uri.parse('$baseUrl$path');
     final response = await http.post(
       uri,
@@ -62,7 +70,7 @@ class ApiClient {
 
   Map<String, dynamic> _handle(http.Response response) {
     if (response.statusCode == 401) {
-      _token = null;
+      token = null;
       throw const SessionExpiredFailure();
     }
     if (response.statusCode != 200 && response.statusCode != 201) {

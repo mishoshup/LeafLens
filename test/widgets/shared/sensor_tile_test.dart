@@ -27,7 +27,7 @@ void main() {
           home: Scaffold(
             body: SensorTile(
               sensor: SensorKey.temperature,
-              reading: reading(value: 28.5),
+              reading: reading(),
             ),
           ),
         ),
@@ -44,7 +44,7 @@ void main() {
           home: Scaffold(
             body: SensorTile(
               sensor: SensorKey.humidity,
-              reading: reading(value: 65.0, unit: '%'),
+              reading: reading(value: 65, unit: '%'),
             ),
           ),
         ),
@@ -56,9 +56,9 @@ void main() {
 
     testWidgets('shows skeleton when reading is null', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
-            body: SensorTile(sensor: SensorKey.temperature, reading: null),
+            body: SensorTile(sensor: SensorKey.temperature),
           ),
         ),
       );
@@ -75,7 +75,7 @@ void main() {
             body: SensorTile(
               sensor: SensorKey.soilMoisture,
               reading: reading(
-                value: 55.0,
+                value: 55,
                 unit: '%',
                 age: const Duration(hours: 2),
               ),
@@ -94,7 +94,7 @@ void main() {
             body: SensorTile(
               sensor: SensorKey.soilMoisture,
               reading: reading(
-                value: 55.0,
+                value: 55,
                 unit: '%',
                 age: const Duration(minutes: 5),
               ),
@@ -113,7 +113,7 @@ void main() {
           home: Scaffold(
             body: SensorTile(
               sensor: SensorKey.waterLevel,
-              reading: reading(value: 80.0, unit: '%'),
+              reading: reading(value: 80, unit: '%'),
             ),
           ),
         ),

@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:leaflens/theme/app_colors.dart';
 import 'package:leaflens/theme/app_typography.dart';
 
+/// LeafLens application theme configuration.
+///
+/// Defines the Material 3 light theme with customised colour scheme,
+/// typography, card styles, button styles, input decoration, chips,
+/// and navigation bar theming.
 class AppTheme {
   AppTheme._();
 
+  /// The light theme used throughout the LeafLens app.
   static ThemeData get light {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: AppColors.mediumGreen,
-      brightness: Brightness.light,
     );
 
     return ThemeData(
@@ -17,7 +22,7 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.offWhite,
 
       // Typography — Lexend is the default via pubspec.yaml fonts:
-      textTheme: TextTheme(
+      textTheme: const TextTheme(
         displayLarge: AppTypography.displayLarge,
         displayMedium: AppTypography.displayMedium,
         displaySmall: AppTypography.displaySmall,
@@ -60,7 +65,8 @@ class AppTheme {
             borderRadius: BorderRadius.circular(50),
           ),
           textStyle: const TextStyle(
-            fontWeight: FontWeight.w600, fontSize: 16,
+            fontWeight: FontWeight.w600,
+            fontSize: 16,
           ),
         ),
       ),
@@ -80,14 +86,19 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: colorScheme.surfaceContainerLow,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: colorScheme.outline),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: 0.5)),
+          borderSide: BorderSide(
+            color: colorScheme.outline.withValues(alpha: 0.5),
+          ),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),

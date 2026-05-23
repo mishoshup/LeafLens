@@ -4,9 +4,11 @@ import 'package:leaflens/features/dashboard/domain/growth_health_score.dart';
 
 /// Small colored chip showing the health status label.
 class StatusBadge extends StatelessWidget {
-  final HealthStatus status;
+  /// Creates a [StatusBadge] for the given [status].
+  const StatusBadge({required this.status, super.key});
 
-  const StatusBadge({super.key, required this.status});
+  /// The health status to display (optimal, caution, danger, etc.).
+  final HealthStatus status;
 
   @override
   Widget build(BuildContext context) {
@@ -23,9 +25,14 @@ class StatusBadge extends StatelessWidget {
         children: [
           Icon(Icons.circle, size: 8, color: color),
           const SizedBox(width: 6),
-          Text(_label, style: TextStyle(
-            color: color, fontWeight: FontWeight.w600, fontSize: 12,
-          )),
+          Text(
+            _label,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+          ),
         ],
       ),
     );

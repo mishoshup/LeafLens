@@ -1,10 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:leaflens/app.dart';
-
 void main() {
   group('DashboardScreen', () {
-    // TODO: Dashboard is a placeholder ("Dashboard — next build").
+    // TODO(danialhaikal): Dashboard is a placeholder
+    // ("Dashboard — next build").
     //       Remove skip and write real tests once dashboard is implemented:
     //       - Health Score gauge renders with real data
     //       - Sensor tiles show live telemetry

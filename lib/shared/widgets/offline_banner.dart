@@ -3,7 +3,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
 
+/// Banner shown at the top of the dashboard when the user is offline.
+///
+/// Hides when the auth state indicates a valid token is available.
 class OfflineBanner extends ConsumerWidget {
+  /// Creates an [OfflineBanner] widget.
   const OfflineBanner({super.key});
 
   @override
@@ -19,14 +23,17 @@ class OfflineBanner extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       content: Row(
         children: [
-          Icon(Icons.cloud_off,
+          Icon(
+            Icons.cloud_off,
             size: 16,
-            color: Theme.of(context).colorScheme.onErrorContainer),
+            color: Theme.of(context).colorScheme.onErrorContainer,
+          ),
           const SizedBox(width: 8),
           Text(
             'No connection — showing last known data',
             style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: Theme.of(context).colorScheme.onErrorContainer),
+              color: Theme.of(context).colorScheme.onErrorContainer,
+            ),
           ),
         ],
       ),

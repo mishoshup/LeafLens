@@ -1,3 +1,7 @@
+/// Application-wide configuration values.
+///
+/// API and WebSocket URLs are set at build time via --dart-define.
+/// Telemetry cache and staleness thresholds are defined here.
 class AppConfig {
   AppConfig._();
 

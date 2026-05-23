@@ -8,10 +8,14 @@ import 'package:leaflens/features/dashboard/domain/sensor_reading.dart';
 /// If [reading] is null, shows a skeleton placeholder.
 /// If reading is stale, shows a warning icon + age label in error color.
 class SensorTile extends StatelessWidget {
-  final SensorKey sensor;
-  final SensorReading? reading;
+  /// Creates a [SensorTile] for the given [sensor] with an optional [reading].
+  const SensorTile({required this.sensor, super.key, this.reading});
 
-  const SensorTile({super.key, required this.sensor, this.reading});
+  /// The type of sensor this tile represents (e.g. temperature, humidity).
+  final SensorKey sensor;
+
+  /// The current reading, or null to show a skeleton placeholder.
+  final SensorReading? reading;
 
   @override
   Widget build(BuildContext context) {
@@ -25,17 +29,23 @@ class SensorTile extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(width: 60, height: 12,
+              Container(
+                width: 60,
+                height: 12,
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(4),
-                )),
+                ),
+              ),
               const SizedBox(height: 12),
-              Container(width: 80, height: 28,
+              Container(
+                width: 80,
+                height: 28,
                 decoration: BoxDecoration(
                   color: cs.surfaceContainerHighest,
                   borderRadius: BorderRadius.circular(8),
-                )),
+                ),
+              ),
             ],
           ),
         ),
@@ -55,8 +65,11 @@ class SensorTile extends StatelessWidget {
                   const SizedBox(width: 4),
                   Tooltip(
                     message: 'Last updated ${reading!.ageLabel}',
-                    child: Icon(Icons.warning_amber_rounded,
-                      size: 14, color: cs.error),
+                    child: Icon(
+                      Icons.warning_amber_rounded,
+                      size: 14,
+                      color: cs.error,
+                    ),
                   ),
                 ],
               ],

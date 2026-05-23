@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:go_router/go_router.dart';
 
-import 'package:leaflens/app.dart';
 import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
 import 'package:leaflens/main.dart' as app;
 
@@ -25,8 +23,9 @@ Widget buildTestApp() {
 
 void main() {
   group('Navigation flows', () {
-    testWidgets('splash → login: Get Started button navigates to login',
-        (tester) async {
+    testWidgets('splash → login: Get Started button navigates to login', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildTestApp());
       await tester.pumpAndSettle();
 
@@ -40,8 +39,9 @@ void main() {
       expect(find.text('Password'), findsOneWidget);
     });
 
-    testWidgets('login → signup: Sign up link navigates to signup',
-        (tester) async {
+    testWidgets('login → signup: Sign up link navigates to signup', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildTestApp());
       await tester.pumpAndSettle();
 
@@ -56,8 +56,9 @@ void main() {
       expect(find.byType(Checkbox), findsOneWidget);
     });
 
-    testWidgets('signup → login: Login link navigates back to login',
-        (tester) async {
+    testWidgets('signup → login: Login link navigates back to login', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildTestApp());
       await tester.pumpAndSettle();
 
@@ -73,8 +74,9 @@ void main() {
       expect(find.text('Password'), findsOneWidget);
     });
 
-    testWidgets('full splash → login → signup → login round trip',
-        (tester) async {
+    testWidgets('full splash → login → signup → login round trip', (
+      tester,
+    ) async {
       await tester.pumpWidget(buildTestApp());
       await tester.pumpAndSettle();
 
@@ -91,8 +93,7 @@ void main() {
       expect(find.text('Or continue with Email'), findsOneWidget);
     });
 
-    testWidgets('unauthenticated routes redirect to login',
-        (tester) async {
+    testWidgets('unauthenticated routes redirect to login', (tester) async {
       // Router redirect: if no token, non-public routes → /login
       // The redirect guard is tested implicitly by the flow tests above.
       // Direct GoRouter redirect testing requires injecting a test router.

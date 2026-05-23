@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
+import 'package:go_router/go_router.dart';
 import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
+import 'package:leaflens/screens/login/login_page.dart';
 import 'package:leaflens/screens/signup/signup_page.dart';
 import 'package:leaflens/screens/splash/splash_screen.dart';
-import 'package:leaflens/screens/login/login_page.dart';
 
+/// Placeholder dashboard screen shown after login.
+/// Will be replaced with the full dashboard implementation in a future build.
 class DashboardScreen extends ConsumerWidget {
+  /// Creates a [DashboardScreen] widget.
   const DashboardScreen({super.key});
 
   @override
@@ -20,6 +22,9 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
+/// Provides the [GoRouter] instance for app navigation.
+/// Checks authentication state on every route transition and redirects
+/// unauthenticated users to /login and authenticated users away from /login.
 final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authStateProvider);
 
@@ -31,7 +36,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (path == '/splash') return null;
       if (!isLoggedIn && path != '/login' && path != '/signup') return '/login';
-      if (isLoggedIn && (path == '/login' || path == '/signup')) return '/dashboard';
+      if (isLoggedIn && (path == '/login' || path == '/signup'))
+        return '/dashboard';
       return null;
     },
     routes: [

@@ -6,14 +6,19 @@ import 'package:flutter/material.dart';
 /// Each sensor tile/chart gets its own boundary so one failure
 /// doesn't cascade to the rest of the dashboard.
 class SensorErrorBoundary extends StatefulWidget {
-  final String label;
-  final Widget child;
-
+  /// Creates a [SensorErrorBoundary] wrapping [child], labelled with [label]
+  /// for the fallback message.
   const SensorErrorBoundary({
-    super.key,
     required this.label,
     required this.child,
+    super.key,
   });
+
+  /// Human-readable label shown in the fallback UI (e.g. "Soil Moisture").
+  final String label;
+
+  /// The widget to wrap with error-catching behaviour.
+  final Widget child;
 
   @override
   State<SensorErrorBoundary> createState() => _SensorErrorBoundaryState();
@@ -38,9 +43,12 @@ class _SensorErrorBoundaryState extends State<SensorErrorBoundary> {
           children: [
             Icon(Icons.sensors_off, color: cs.error, size: 24),
             const SizedBox(height: 4),
-            Text('${widget.label} unavailable',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: cs.onErrorContainer)),
+            Text(
+              '${widget.label} unavailable',
+              style: Theme.of(
+                context,
+              ).textTheme.bodySmall?.copyWith(color: cs.onErrorContainer),
+            ),
             TextButton(
               onPressed: () => setState(() => _error = null),
               child: const Text('Retry'),
@@ -57,10 +65,9 @@ class _SensorErrorBoundaryState extends State<SensorErrorBoundary> {
 }
 
 class _ErrorCapture extends StatefulWidget {
+  const _ErrorCapture({required this.child, required this.onError});
   final Widget child;
   final void Function(Object) onError;
-
-  const _ErrorCapture({required this.child, required this.onError});
 
   @override
   State<_ErrorCapture> createState() => _ErrorCaptureState();

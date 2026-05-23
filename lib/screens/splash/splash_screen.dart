@@ -4,7 +4,8 @@ import 'package:leaflens/shared/widgets/background_ellipse.dart';
 import 'package:leaflens/shared/widgets/leaf_lens_logo.dart';
 import 'package:leaflens/theme/app_colors.dart';
 
-// Per-screen extensions keep build() readable without global namespace pollution.
+/// Per-screen extensions keep build() readable without
+/// global namespace pollution.
 extension on BuildContext {
   ColorScheme get colors => Theme.of(this).colorScheme;
   void navigateTo(String route) => go(route);
@@ -28,7 +29,12 @@ extension on BuildContext {
   );
 }
 
+/// Splash / onboarding screen shown on first launch.
+///
+/// Displays the brand logo, tagline, and a "Get Started" button
+/// that navigates to the login screen.
 class SplashScreen extends StatelessWidget {
+  /// Creates a [SplashScreen] widget.
   const SplashScreen({super.key});
 
   @override
@@ -60,7 +66,7 @@ class _SplashContent extends StatelessWidget {
           _BrandHeader(),
           Spacer(flex: 2),
           _GetStartedButton(),
-          Spacer(flex: 1),
+          Spacer(),
         ],
       ),
     );

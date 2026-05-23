@@ -7,13 +7,13 @@ import 'package:leaflens/features/dashboard/domain/sensor_reading.dart';
 void main() {
   group('GrowthHealthScore.compute', () {
     final now = DateTime.now();
-    final defaultConfig = const HealthConfig();
+    const defaultConfig = HealthConfig();
 
     SensorReading reading(double value) => SensorReading(
-          value: value,
-          recordedAt: now,
-          unit: '%',
-        );
+      value: value,
+      recordedAt: now,
+      unit: '%',
+    );
 
     group('bell curve scoring', () {
       test('returns optimal score at midpoint of range', () {
@@ -87,8 +87,8 @@ void main() {
       test('scores 0.5 at quarter and three-quarter points', () {
         final readings = {
           SensorKey.soilMoisture: reading(47.5), // quarter way [40, 70]
-          SensorKey.temperature: reading(30),     // above max 28 → 0
-          SensorKey.humidity: reading(65),        // optimal
+          SensorKey.temperature: reading(30), // above max 28 → 0
+          SensorKey.humidity: reading(65), // optimal
         };
 
         final result = GrowthHealthScore.compute(readings, defaultConfig);
@@ -106,8 +106,8 @@ void main() {
         // Bad moisture, perfect others
         final readings = {
           SensorKey.soilMoisture: reading(30), // 0
-          SensorKey.temperature: reading(23),   // 1.0
-          SensorKey.humidity: reading(65),      // 1.0
+          SensorKey.temperature: reading(23), // 1.0
+          SensorKey.humidity: reading(65), // 1.0
         };
 
         final result = GrowthHealthScore.compute(readings, defaultConfig);
@@ -118,9 +118,9 @@ void main() {
 
       test('weights temperature at 30%', () {
         final readings = {
-          SensorKey.soilMoisture: reading(55),  // 1.0
-          SensorKey.temperature: reading(12),    // below 18 → 0
-          SensorKey.humidity: reading(65),       // 1.0
+          SensorKey.soilMoisture: reading(55), // 1.0
+          SensorKey.temperature: reading(12), // below 18 → 0
+          SensorKey.humidity: reading(65), // 1.0
         };
 
         final result = GrowthHealthScore.compute(readings, defaultConfig);
@@ -131,9 +131,9 @@ void main() {
 
       test('weights humidity at 20%', () {
         final readings = {
-          SensorKey.soilMoisture: reading(55),  // 1.0
-          SensorKey.temperature: reading(23),    // 1.0
-          SensorKey.humidity: reading(30),       // below 50 → 0
+          SensorKey.soilMoisture: reading(55), // 1.0
+          SensorKey.temperature: reading(23), // 1.0
+          SensorKey.humidity: reading(30), // below 50 → 0
         };
 
         final result = GrowthHealthScore.compute(readings, defaultConfig);
@@ -202,8 +202,8 @@ void main() {
         // Push score to ~75: moisture at 25th percentile (0.5), temp/humidity optimal
         final readings = {
           SensorKey.soilMoisture: reading(47.5), // 25th %ile → 0.5
-          SensorKey.temperature: reading(23),     // 1.0
-          SensorKey.humidity: reading(65),        // 1.0
+          SensorKey.temperature: reading(23), // 1.0
+          SensorKey.humidity: reading(65), // 1.0
         };
         final result = GrowthHealthScore.compute(readings, defaultConfig);
 
@@ -217,8 +217,8 @@ void main() {
         // moisture=30 (0), temp=23 (1.0), humidity=65 (1.0) → score=50
         final readings = {
           SensorKey.soilMoisture: reading(30), // below 40 → 0
-          SensorKey.temperature: reading(23),   // 1.0
-          SensorKey.humidity: reading(65),      // 1.0
+          SensorKey.temperature: reading(23), // 1.0
+          SensorKey.humidity: reading(65), // 1.0
         };
         final result = GrowthHealthScore.compute(readings, defaultConfig);
 
@@ -229,9 +229,9 @@ void main() {
       test('danger at score 30-49', () {
         // temp=20 scores 0.4, humidity optimal, moisture dead
         final readings = {
-          SensorKey.soilMoisture: reading(30),  // 0
-          SensorKey.temperature: reading(20),    // _bellScore(20,18,28)=0.4
-          SensorKey.humidity: reading(65),       // 1.0
+          SensorKey.soilMoisture: reading(30), // 0
+          SensorKey.temperature: reading(20), // _bellScore(20,18,28)=0.4
+          SensorKey.humidity: reading(65), // 1.0
         };
         final result = GrowthHealthScore.compute(readings, defaultConfig);
 
@@ -243,8 +243,8 @@ void main() {
       test('critical at score < 30', () {
         final readings = {
           SensorKey.soilMoisture: reading(30), // 0
-          SensorKey.temperature: reading(30),   // above 28 → 0
-          SensorKey.humidity: reading(30),      // below 50 → 0
+          SensorKey.temperature: reading(30), // above 28 → 0
+          SensorKey.humidity: reading(30), // below 50 → 0
         };
         final result = GrowthHealthScore.compute(readings, defaultConfig);
 
@@ -256,7 +256,7 @@ void main() {
     group('custom config', () {
       test('uses species-specific thresholds', () {
         // Cactus: very dry soil range
-        final cactusConfig = const HealthConfig(
+        const cactusConfig = HealthConfig(
           soilMoistureMin: 5,
           soilMoistureMax: 25,
           temperatureMin: 20,
@@ -267,8 +267,8 @@ void main() {
 
         final readings = {
           SensorKey.soilMoisture: reading(15), // midpoint for cactus
-          SensorKey.temperature: reading(27),   // midpoint-ish
-          SensorKey.humidity: reading(30),      // midpoint
+          SensorKey.temperature: reading(27), // midpoint-ish
+          SensorKey.humidity: reading(30), // midpoint
         };
 
         final result = GrowthHealthScore.compute(readings, cactusConfig);
@@ -278,7 +278,7 @@ void main() {
       });
 
       test('detects cactus in wet soil', () {
-        final cactusConfig = const HealthConfig(
+        const cactusConfig = HealthConfig(
           soilMoistureMin: 5,
           soilMoistureMax: 25,
           temperatureMin: 20,
@@ -354,7 +354,9 @@ void main() {
         final after = DateTime.now();
 
         expect(
-          result.computedAt.isAfter(before.subtract(const Duration(seconds: 1))),
+          result.computedAt.isAfter(
+            before.subtract(const Duration(seconds: 1)),
+          ),
           isTrue,
         );
         expect(
@@ -367,9 +369,9 @@ void main() {
     group('score clamping', () {
       test('clamps score to 0 minimum', () {
         final readings = {
-          SensorKey.soilMoisture: reading(10),  // 0
-          SensorKey.temperature: reading(50),    // above 28 → 0
-          SensorKey.humidity: reading(5),        // below 50 → 0
+          SensorKey.soilMoisture: reading(10), // 0
+          SensorKey.temperature: reading(50), // above 28 → 0
+          SensorKey.humidity: reading(5), // below 50 → 0
         };
 
         final result = GrowthHealthScore.compute(readings, defaultConfig);

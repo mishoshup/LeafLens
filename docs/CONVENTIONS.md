@@ -2,6 +2,55 @@
 
 ---
 
+## Analysis & Linting
+
+### Package
+
+We use [`very_good_analysis`](https://github.com/VeryGoodOpenSource/very_good_analysis) (v10.x) — the de facto industry-standard lint ruleset from Very Good Ventures (Google's top Flutter agency). ~200 rules covering style, docs, performance, null safety edge cases, and anti-patterns.
+
+| Package | Rules | Strictness |
+|---------|-------|-----------|
+| `flutter_lints` | ~30 | Moderate — what `flutter create` gives you |
+| `very_good_analysis` | ~200 | Strict — production-grade, examiners love it |
+
+### Config (`analysis_options.yaml`)
+
+```yaml
+include: package:very_good_analysis/analysis_options.yaml
+
+analyzer:
+  exclude:
+    - "build/**"
+    - ".dart_tool/**"
+    - "tools/**"
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+```
+
+The analyzer already sets `strict-casts`, `strict-inference`, `strict-raw-types` — no need to re-declare.
+
+Excluded directories prevent dartls from indexing 4GB+ of build artifacts.
+
+### CLI Commands
+
+| Command | Description |
+|---------|------------------|
+| `dart analyze` | Lint analysis (200+ rules) |
+| `dart fix --apply` | Auto-fix what the fix engine can |
+| `dart format .` | Format all Dart files |
+
+### Key Rules Enforced
+
+- `public_member_api_docs` — every public class, method, and field needs a `///` doc comment
+- `avoid_print` — use a logging framework or remove before committing
+- `require_trailing_commas` — trailing commas everywhere for cleaner diffs
+- `prefer_const_constructors` / `prefer_const_declarations` — const wherever possible
+- `lines_longer_than_80_chars` — hard limit at 80 columns
+- `always_use_package_imports` — no relative `../` imports
+- `omit_local_variable_types` — `var` over `final String x` when the type is obvious
+
+Run `dart fix --apply` after major edits to auto-fix the majority of violations.
+
 ## Naming
 
 | Thing | Convention | Example |
@@ -198,8 +247,10 @@ Always check `mounted` after async gaps before `setState` or navigation.
 
 ```bash
 # Before committing
-flutter analyze
-dart run build_runner build      # if annotations changed
+dart analyze                    # very_good_analysis, 200+ rules
+dart fix --apply                # auto-fix what the fix engine can
+dart format .                   # format all Dart files
+dart run build_runner build     # if annotations changed
 flutter test
 
 # Upgrade codegen packages as a SET, never individually:

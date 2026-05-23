@@ -7,7 +7,9 @@ void main() {
   group('AppButton', () {
     testWidgets('renders label text', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(home: Scaffold(body: AppButton(label: 'Submit'))),
+        const MaterialApp(
+          home: Scaffold(body: AppButton(label: 'Submit')),
+        ),
       );
 
       expect(find.text('Submit'), findsOneWidget);
@@ -32,9 +34,9 @@ void main() {
 
     testWidgets('is disabled when onPressed is null', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
-            body: const AppButton(label: 'Disabled'),
+            body: AppButton(label: 'Disabled'),
           ),
         ),
       );
@@ -46,11 +48,10 @@ void main() {
 
     testWidgets('primary variant uses FilledButton', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppButton(
               label: 'Primary',
-              variant: AppButtonVariant.primary,
             ),
           ),
         ),
@@ -61,7 +62,7 @@ void main() {
 
     testWidgets('secondary variant uses FilledButton.tonal', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppButton(
               label: 'Secondary',
@@ -77,7 +78,7 @@ void main() {
 
     testWidgets('outline variant uses OutlinedButton', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppButton(
               label: 'Outline',
@@ -92,7 +93,7 @@ void main() {
 
     testWidgets('text variant uses TextButton', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppButton(
               label: 'TextBtn',
@@ -107,7 +108,7 @@ void main() {
 
     testWidgets('shows loading spinner instead of label', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppButton(
               label: 'Loading',
@@ -141,7 +142,7 @@ void main() {
 
     testWidgets('renders with icon', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppButton(
               label: 'With Icon',
@@ -157,7 +158,7 @@ void main() {
 
     testWidgets('renders with custom width', (tester) async {
       await tester.pumpWidget(
-        MaterialApp(
+        const MaterialApp(
           home: Scaffold(
             body: AppButton(
               label: 'Wide',
