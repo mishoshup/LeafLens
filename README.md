@@ -404,15 +404,15 @@ loading.
 
 | Component | ESP32 | Telemetry Key | Unit |
 |-----------|-------|---------------|------|
-| Soil moisture sensor | #1 (env) | `soil_moisture` | % |
-| DHT temperature | #1 (env) | `temperature` | °C |
-| DHT humidity | #1 (env) | `humidity` | % |
+| Soil moisture sensor | #1 (env) | soil_moisture | % |
+| DHT temperature | #1 (env) | temperature | °C |
+| DHT humidity | #1 (env) | humidity | % |
 | Water pump | #1 (env) | — (actuator) | — |
 | Mist maker | #1 (env) | — (actuator) | — |
-| Ultrasonic water level | #2 (water) | `water_level` | % |
+| Ultrasonic water level | #2 (water) | water_level | % |
 | Solenoid valve | #2 (water) | — (refill actuator) | — |
 
-Telemetry cadence: every 15 minutes via MQTT.
+**Telemetry cadence:** published every 5 seconds via MQTT (all sensors batched in one message). 15-minute cadence from thesis was for battery-powered scenarios — this setup runs on USB, so we push real-time.
 
 ---
 
