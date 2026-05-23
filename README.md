@@ -1,5 +1,16 @@
 # LeafLens
 
+<img src="https://img.shields.io/badge/version-1.0.0+1-5BC0DE?style=flat-square" alt="Version">&nbsp;
+<img src="https://img.shields.io/github/stars/mishoshup/LeafLens?style=flat-square&label=stars&color=5BC0DE" alt="Stars">&nbsp;
+<img src="https://img.shields.io/github/license/mishoshup/LeafLens?style=flat-square&color=5BC0DE" alt="License">&nbsp;
+<img src="https://img.shields.io/github/languages/top/mishoshup/LeafLens?style=flat-square&color=5BC0DE" alt="Dart">&nbsp;
+<img src="https://img.shields.io/github/last-commit/mishoshup/LeafLens?style=flat-square&color=5BC0DE" alt="Last Commit">
+<br>
+<img src="https://img.shields.io/badge/Flutter-3.12-5BC0DE?style=flat-square&logo=flutter&logoColor=white" alt="Flutter">&nbsp;
+<img src="https://img.shields.io/badge/Dart-3.11-5BC0DE?style=flat-square&logo=dart&logoColor=white" alt="Dart">&nbsp;
+<img src="https://img.shields.io/badge/Riverpod-3.x-5BC0DE?style=flat-square" alt="Riverpod">&nbsp;
+<img src="https://img.shields.io/badge/ThingsBoard-IoT-5BC0DE?style=flat-square" alt="ThingsBoard">
+
 **AI-Powered Mobile Application for Intelligent Plant Health Monitoring**
 
 Final Year Project — Bachelor of Computer Science, IIUM  
