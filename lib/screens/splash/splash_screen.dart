@@ -1,116 +1,118 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../theme/app_colors.dart';
+import 'package:leaflens/shared/widgets/background_ellipse.dart';
+import 'package:leaflens/shared/widgets/leaf_lens_logo.dart';
+import 'package:leaflens/theme/app_colors.dart';
+
+// Per-screen extensions keep build() readable without global namespace pollution.
+extension on BuildContext {
+  ColorScheme get colors => Theme.of(this).colorScheme;
+  void navigateTo(String route) => go(route);
+
+  TextStyle get brandStyle => GoogleFonts.inter(
+    fontWeight: FontWeight.w700,
+    fontSize: 28,
+    color: AppColors.offWhite,
+  );
+
+  TextStyle get taglineStyle => GoogleFonts.inter(
+    fontWeight: FontWeight.w700,
+    fontSize: 26,
+    color: AppColors.offWhite,
+    fontStyle: FontStyle.italic,
+  );
+  TextStyle get buttonStyle => GoogleFonts.inter(
+    fontWeight: FontWeight.w800,
+    fontSize: 22,
+    color: AppColors.offWhite,
+  );
+}
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
 
-  // Figma design canvas: 402 × 874
-  static const double _dW = 402;
-  static const double _dH = 874;
+  @override
+  Widget build(BuildContext context) {
+    return const Scaffold(
+      backgroundColor: AppColors.lightGreenBg,
+      body: Stack(
+        children: [
+          SafeArea(child: BackgroundEllipse()),
+          SafeArea(child: _SplashContent()),
+        ],
+      ),
+    );
+  }
+}
+
+class _SplashContent extends StatelessWidget {
+  const _SplashContent();
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final sx = constraints.maxWidth / _dW;
-          final sy = constraints.maxHeight / _dH;
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Spacer(flex: 4),
+          LeafLensLogo(),
+          SizedBox(height: 12),
+          _BrandHeader(),
+          Spacer(flex: 2),
+          _GetStartedButton(),
+          Spacer(flex: 1),
+        ],
+      ),
+    );
+  }
+}
 
-          return Stack(
-            clipBehavior: Clip.hardEdge,
-            children: [
-              // ── 1. Background ──────────────────────────────────
-              Container(color: AppColors.lightGreenBg),
+class _BrandHeader extends StatelessWidget {
+  const _BrandHeader();
 
-              // ── 2. Decorative circle (bleeds outside frame) ────
-              Positioned(
-                left: 55 * sx,
-                top: 149 * sy,
-                child: SvgPicture.asset(
-                  'assets/images/splash_ellipse.svg',
-                  width: 630 * sx,
-                  height: 691 * sy,
-                ),
-              ),
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text('LEAFLENS', style: context.brandStyle),
+        const SizedBox(height: 48),
+        Text(
+          'Smarter Care for\nHealthier Plants ',
+          style: context.taglineStyle,
+        ),
+        // const SizedBox(width: 6),
+        // SvgPicture.asset(
+        //   'assets/images/icon_leaf.svg',
+        //   width: 24,
+        //   height: 24,
+        //   colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn),
+        // ),
+      ],
+    );
+  }
+}
 
-              // ── 3. Leaf plant illustration ─────────────────────
-              Positioned(
-                left: 113 * sx,
-                top: 336 * sy,
-                child: SvgPicture.asset(
-                  'assets/images/splash_illustration.svg',
-                  width: 156.71 * sx,
-                  height: 202.7 * sy,
-                ),
-              ),
+class _GetStartedButton extends StatelessWidget {
+  const _GetStartedButton();
 
-              // ── 4. Brand name ──────────────────────────────────
-              Positioned(
-                left: 144 * sx,
-                top: 552 * sy,
-                child: Text(
-                  'LEAFLENS',
-                  style: GoogleFonts.inter(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 24 * sx,
-                    color: Colors.white.withValues(alpha: 0.9),
-                    height: 1,
-                  ),
-                ),
-              ),
-
-              // ── 5. Leaf icon (top-right of brand name) ─────────
-              Positioned(
-                left: 258 * sx,
-                top: 540 * sy,
-                child: SvgPicture.asset(
-                  'assets/images/icon_leaf.svg',
-                  width: 24 * sx,
-                  height: 24 * sy,
-                  colorFilter: const ColorFilter.mode(
-                    Colors.white,
-                    BlendMode.srcIn,
-                  ),
-                ),
-              ),
-
-              // ── 6. Get Started button ──────────────────────────
-              Positioned(
-                left: 22 * sx,
-                top: 672 * sy,
-                child: GestureDetector(
-                  onTap: () {},
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(50 * sx),
-                    child: BackdropFilter(
-                      filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                      child: Container(
-                        width: 359 * sx,
-                        height: 80 * sy,
-                        decoration: BoxDecoration(
-                          color: AppColors.deepGreen.withValues(alpha: 0.69),
-                          borderRadius: BorderRadius.circular(50 * sx),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          'Get Started',
-                          style: GoogleFonts.inter(
-                            fontWeight: FontWeight.w800,
-                            fontSize: 28 * sx,
-                            color: Colors.white.withValues(alpha: 0.9),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 32),
+      child: SizedBox(
+        width: double.infinity,
+        child: FilledButton(
+          onPressed: () => context.navigateTo('/login'),
+          style: FilledButton.styleFrom(
+            backgroundColor: context.colors.primary,
+            foregroundColor: context.colors.onPrimary,
+            padding: const EdgeInsets.symmetric(vertical: 20),
+            shape: const StadiumBorder(),
+          ),
+          child: Text('Get Started', style: context.buttonStyle),
+        ),
       ),
     );
   }

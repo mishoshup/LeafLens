@@ -1,0 +1,36 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
+
+class OfflineBanner extends ConsumerWidget {
+  const OfflineBanner({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final auth = ref.watch(authStateProvider);
+    if (auth.hasValue && auth.value != null) {
+      return const SizedBox.shrink();
+    }
+    if (auth.isLoading) return const SizedBox.shrink();
+
+    return MaterialBanner(
+      backgroundColor: Theme.of(context).colorScheme.errorContainer,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      content: Row(
+        children: [
+          Icon(Icons.cloud_off,
+            size: 16,
+            color: Theme.of(context).colorScheme.onErrorContainer),
+          const SizedBox(width: 8),
+          Text(
+            'No connection — showing last known data',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onErrorContainer),
+          ),
+        ],
+      ),
+      actions: const [SizedBox.shrink()],
+    );
+  }
+}

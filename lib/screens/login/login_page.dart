@@ -1,177 +1,286 @@
 import 'package:flutter/material.dart';
-import '../../theme/app_colors.dart';
-import '../../theme/app_typography.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class LoginPage extends StatelessWidget {
+import 'package:leaflens/features/auth/data/auth_repository.dart';
+import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
+import 'package:leaflens/shared/widgets/app_text_field.dart';
+import 'package:leaflens/theme/app_colors.dart';
+
+// Per-screen extensions keep build() readable without global namespace pollution.
+extension on BuildContext {
+  ColorScheme get colors => Theme.of(this).colorScheme;
+  TextTheme get textTheme => Theme.of(this).textTheme;
+
+  TextStyle get loginTitleStyle => GoogleFonts.poppins(
+    fontWeight: FontWeight.w600,
+    fontSize: 38,
+    color: AppColors.deepGreen,
+  );
+
+  TextStyle get googleButtonStyle => GoogleFonts.poppins(
+    fontWeight: FontWeight.w600,
+    fontSize: 16,
+    color: AppColors.white,
+  );
+
+  TextStyle get loginButtonStyle =>
+      GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 20);
+
+  TextStyle get signUpMuted => GoogleFonts.lexend(
+    fontWeight: FontWeight.w300,
+    fontSize: 16,
+    color: AppColors.offBlack.withValues(alpha: 0.6),
+  );
+
+  TextStyle get signUpLink => GoogleFonts.lexend(
+    fontWeight: FontWeight.w700,
+    fontSize: 16,
+    color: AppColors.mediumGreen,
+  );
+}
+
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
+
+  @override
+  ConsumerState<LoginPage> createState() => _LoginPageState();
+}
+
+class _LoginPageState extends ConsumerState<LoginPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  bool _obscurePassword = true;
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() => _loading = true);
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      await repo.login(_emailCtrl.text.trim(), _passwordCtrl.text);
+      ref.invalidate(authStateProvider);
+      if (mounted) context.go('/dashboard');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: context.colors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.deepGreen,
+      backgroundColor: AppColors.offWhite,
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 34),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 120),
-
-              // ── Title ───────────────────────────────────────────
-              Text(
-                'Login',
-                style: AppTypography.displayLarge.copyWith(
-                  color: AppColors.white,
+      child: Center(
+        child: Form(
+          key: _formKey,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Center(child: _LoginHeader()),
+                const _GoogleSignInButton(),
+                const _OrDivider(),
+                _EmailField(controller: _emailCtrl),
+                const SizedBox(height: 12),
+                _PasswordField(
+                  controller: _passwordCtrl,
+                  obscure: _obscurePassword,
+                  onToggle: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
-                textAlign: TextAlign.center,
-              ),
-
-              const SizedBox(height: 140),
-
-              // ── Input Fields ────────────────────────────────────
-              _LeafInputField(hint: 'Email'),
-              const SizedBox(height: 20),
-              _LeafInputField(hint: 'Password', obscure: true),
-
-              const SizedBox(height: 40),
-
-              // ── Or continue with Email divider ─────────────────
-              _OrDivider(),
-
-              const SizedBox(height: 30),
-
-              // ── Google Sign In ──────────────────────────────────
-              _GoogleSignInButton(),
-
-              const SizedBox(height: 24),
-
-              // ── Login Button ────────────────────────────────────
-              SizedBox(
-                width: double.infinity,
-                height: 64,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.lightGreenBg,
-                    foregroundColor: AppColors.deepGreen,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(50),
-                    ),
-                    textStyle: AppTypography.displaySmall.copyWith(
-                      color: AppColors.deepGreen,
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text('Login'),
-                ),
-              ),
-
-              const SizedBox(height: 30),
-
-              // ── Footer ──────────────────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    "Don't have an account? ",
-                    style: AppTypography.footerLight.copyWith(
-                      color: AppColors.white.withValues(alpha: 0.8),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () {},
-                    child: Text(
-                      'Sign up',
-                      style: AppTypography.footerBold.copyWith(
-                        color: AppColors.lightGreenBg,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Leaf Input Field Widget ──────────────────────────────────
-class _LeafInputField extends StatelessWidget {
-  final String hint;
-  final bool obscure;
-
-  const _LeafInputField({required this.hint, this.obscure = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.white.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(5),
-        border: Border.all(
-          color: AppColors.white.withValues(alpha: 0.3),
-          width: 1,
-        ),
-      ),
-      child: TextField(
-        obscureText: obscure,
-        style: AppTypography.bodyLarge.copyWith(color: AppColors.white),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: AppTypography.bodyLarge.copyWith(
-            color: AppColors.white.withValues(alpha: 0.5),
-          ),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
-        ),
-      ),
-    );
-  }
-}
-
-// ── Or Continue with Email Divider ───────────────────────────
-class _OrDivider extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(child: Container(height: 1, color: AppColors.white.withValues(alpha: 0.3))),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Text(
-            'Or continue with Email',
-            style: AppTypography.bodyMedium.copyWith(
-              color: AppColors.white.withValues(alpha: 0.6),
+                const SizedBox(height: 28),
+                _LoginButton(loading: _loading, onPressed: _handleLogin),
+                const SizedBox(height: 12),
+                const _SignUpRow(),
+              ],
             ),
           ),
         ),
-        Expanded(child: Container(height: 1, color: AppColors.white.withValues(alpha: 0.3))),
-      ],
+      ),
+      ),
     );
   }
 }
 
-// ── Google Sign-In Button ────────────────────────────────────
+//
+// Private widgets
+//
+
+ class _LoginHeader extends StatelessWidget {
+       const _LoginHeader();
+
+       @override
+       Widget build(BuildContext context) {
+         return Text('Login', style: context.loginTitleStyle);
+       }
+     }
+
 class _GoogleSignInButton extends StatelessWidget {
+  const _GoogleSignInButton();
+
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: double.infinity,
-      height: 64,
-      child: OutlinedButton.icon(
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: FilledButton.tonal(
         onPressed: () {},
-        icon: const Text('G', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        label: Text(
-          'Sign in with Google',
-          style: AppTypography.bodyLarge.copyWith(color: AppColors.white),
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.offBlack,
+          foregroundColor: AppColors.white,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: const StadiumBorder(),
         ),
-        style: OutlinedButton.styleFrom(
-          side: BorderSide(color: AppColors.white.withValues(alpha: 0.4), width: 1),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(50)),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              'assets/images/google_logo.svg',
+              width: 22,
+              height: 22,
+            ),
+            const SizedBox(width: 12),
+            Text('Log in with Google', style: context.googleButtonStyle),
+          ],
         ),
       ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 32),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: context.colors.outlineVariant)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Or continue with Email',
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.colors.outline,
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: context.colors.outlineVariant)),
+        ],
+      ),
+    );
+  }
+}
+
+class _EmailField extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _EmailField({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      label: 'Email',
+      controller: controller,
+      keyboardType: TextInputType.emailAddress,
+      validator: (v) => (v == null || v.isEmpty) ? 'Enter your email' : null,
+    );
+  }
+}
+
+class _PasswordField extends StatelessWidget {
+  final TextEditingController controller;
+  final bool obscure;
+  final VoidCallback onToggle;
+
+  const _PasswordField({
+    required this.controller,
+    required this.obscure,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      label: 'Password',
+      controller: controller,
+      obscureText: obscure,
+      validator: (v) => (v == null || v.isEmpty) ? 'Enter your password' : null,
+      suffixIcon: IconButton(
+        icon: Icon(
+          obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+        ),
+        onPressed: onToggle,
+      ),
+    );
+  }
+}
+
+class _LoginButton extends StatelessWidget {
+  final bool loading;
+  final VoidCallback onPressed;
+
+  const _LoginButton({required this.loading, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: loading ? null : onPressed,
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        shape: const StadiumBorder(),
+      ),
+      child: loading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.offWhite,
+              ),
+            )
+          : Text('Login', style: context.loginButtonStyle),
+    );
+  }
+}
+
+class _SignUpRow extends StatelessWidget {
+  const _SignUpRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text("Don't have an account? ", style: context.signUpMuted),
+        GestureDetector(
+          onTap: () {},
+          child: Text('Sign up', style: context.signUpLink),
+        ),
+      ],
     );
   }
 }

@@ -31,6 +31,7 @@ migrate_working_dir/
 .pub-cache/
 .pub/
 /build/
+**/build/
 /coverage/
 
 # Symbolication related
@@ -43,3 +44,13 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Xcode / SwiftPM caches
+ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+ios/Runner.xcworkspace/xcshareddata/swiftpm/
+
+# Xcode scheme backups
+ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme.backup
+
+# Local dev tools (not part of project)
+/tools/
