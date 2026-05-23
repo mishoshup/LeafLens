@@ -7,65 +7,132 @@
 
 ## Device Provisioning (BLE Onboarding)
 
-The ESP32 ships with base firmware broadcasting a BLE signal. No static IP, no hardcoded Wi-Fi.
+The ESP32 ships with base firmware broadcasting a BLE signal. No static IP, no hardcoded Wi-Fi. The user never sees a ThingsBoard token, Docker port, or admin credential — FastAPI handles all of that server-side.
 
 ```
-┌──────────┐    BLE (Wi-Fi + user ID)    ┌──────────┐
-│  Flutter  │ ──────────────────────────→ │   ESP32  │
-│   App     │                             │ (base FW)│
-└──────────┘                             └────┬─────┘
-                                               │ connects to Wi-Fi
-                                               ▼
-                                        ┌──────────┐
-                                        │  FastAPI  │ ←── POST /api/v1/devices/register
-                                        │  Backend  │      { mac_address, user_id, device_name }
-                                        └────┬─────┘
-                                             │ creates device via TB REST API
-                                             ▼
-                                        ┌──────────┐
-                                        │ ThingsBoard│
-                                        └──────────┘
-                                             │ returns access token
-                                             ▼
-                                        ┌──────────┐
-                                        │   ESP32   │ ←── saves token to flash (Preferences.h)
-                                        └──────────┘
-                                             │ connects MQTT with token
-                                             ▼
-                                        ┌──────────┐
-                                        │ ThingsBoard│ ←── streams telemetry
-                                        └──────────┘
+┌─────────────┐   (1) BLE: Wi-Fi creds + user_id   ┌─────────────┐
+│   Flutter   │ ────────────────────────────────→   │    ESP32    │
+│     App     │                                     │  (base FW)  │
+└─────────────┘                                     └──────┬──────┘
+                                                           │ (2) connects to Wi-Fi
+                                           (3) POST /api/v1/devices/register
+                                               { mac_address, user_id, device_name }
+                                                           │
+                                                           ▼
+                                                   ┌─────────────┐
+                                                   │   FastAPI   │ →(4a) POST /api/device → ThingsBoard
+                                                   │   Backend   │ ←(4b) GET /api/device/{id}/credentials
+                                                   │             │   saves user_id ↔ device_id to PostgreSQL
+                                                   └──────┬──────┘
+                                                           │ (5) HTTP response: { thingsboard_token }
+                                                           ▼
+                                                   ┌─────────────┐
+                                                   │    ESP32    │ saves token to flash (Preferences.h)
+                                                   └──────┬──────┘
+                                                           │ (6) MQTT with token
+                                                           ▼
+                                                   ┌─────────────┐
+                                                   │ ThingsBoard │ receives telemetry stream
+                                                   └─────────────┘
 ```
+
+**Token ownership:** ThingsBoard auto-generates the device access token when the device is created (step 4a). FastAPI retrieves it via a second call (step 4b) and forwards it to ESP32. FastAPI never generates tokens — it only retrieves what ThingsBoard created.
+
+**No TB Customers needed:** Since Flutter never talks to ThingsBoard directly, there is no need to create a ThingsBoard Customer per app user. Devices live under the tenant. FastAPI owns the tenant admin JWT server-side and maps `user_id → tb_device_id` in PostgreSQL.
 
 ### Step by Step
 
 | Step | From | To | Data | Protocol |
 |------|------|----|------|----------|
-| 1 | Flutter app | ESP32 | Wi-Fi SSID + password, user ID | BLE |
+| 1 | Flutter app | ESP32 | Wi-Fi SSID + password, user_id | BLE |
 | 2 | ESP32 | Home router | Wi-Fi connection | Wi-Fi |
 | 3 | ESP32 | FastAPI | `{ mac_address, user_id, device_name }` | HTTP POST |
-| 4 | FastAPI | ThingsBoard | Create device + generate access token | REST API |
+| 4a | FastAPI | ThingsBoard | Create device | REST API |
+| 4b | FastAPI | ThingsBoard | GET device credentials (token) | REST API |
+| 4c | FastAPI | PostgreSQL | Save `user_id ↔ tb_device_id` | SQL |
 | 5 | FastAPI | ESP32 | `{ thingsboard_token }` | HTTP response |
-| 6 | ESP32 | ThingsBoard | Telemetry (MQTT with token) | MQTT |
+| 6 | ESP32 | ThingsBoard | Telemetry stream | MQTT |
 
-**Why this matters:** ESP32 connects outbound to a public ThingsBoard server. No port forwarding. The user can monitor from anywhere on 4G/5G.
+**Why this works anywhere:** ESP32 makes an outbound connection to your public ThingsBoard server. No port forwarding. Works on 4G/5G, any network.
 
 ---
 
 ## Steady State Data Flow
 
 ```
-ESP32 ──MQTT──→ ThingsBoard ──REST──→ FastAPI ──REST/WS──→ Flutter
+ESP32 ──MQTT──→ ThingsBoard ──REST/WS──→ FastAPI ──REST/WS──→ Flutter
 ```
+
+Flutter never talks to ThingsBoard directly. All TB credentials stay on the FastAPI server. Flutter authenticates with FastAPI's own JWT.
+
+When Flutter requests data:
+1. FastAPI verifies Flutter JWT → extracts `user_id`
+2. PostgreSQL lookup → gets `tb_device_id`
+3. FastAPI queries ThingsBoard using tenant admin JWT
+4. Returns data to Flutter
 
 | Layer | Technology | Role |
 |-------|-----------|------|
 | Hardware | 2× ESP32 + sensors + actuators | Data collection, actuation |
-| Cloud | ThingsBoard (public) | Telemetry storage, device management, alarms, RPC |
-| Backend | FastAPI (Python) | Device registration, user auth, GHS computation, TB proxy |
+| Cloud | ThingsBoard | Telemetry storage, device management, alarms, RPC |
+| Backend | FastAPI + PostgreSQL | User auth, device mapping, GHS computation, TB proxy |
 | Mobile | Flutter | Dashboard UI, offline mode, BLE provisioning |
 
-**Flutter never talks to ThingsBoard directly.** All ThingsBoard credentials stay on the FastAPI server. Flutter only talks to FastAPI (authenticated with a user JWT).
+---
+
+## Data Split
+
+| What | Where | Why |
+|------|-------|-----|
+| User accounts | PostgreSQL | FastAPI issues JWT on login/register |
+| User ↔ device mapping | PostgreSQL | FastAPI knows which TB device belongs to which user |
+| Telemetry (soil, temp, humidity, water level) | ThingsBoard | Time-series storage, MQTT ingestion, alarm rules |
+| Device config (thresholds, actuator state) | ThingsBoard shared attributes | RPC commands, no extra DB needed |
+| Alarms (low water, critical health) | ThingsBoard rule engine | Built-in, no alarm logic to write |
+| Growth Health Score | FastAPI (Python) | Reads telemetry from TB API, computes, returns to Flutter |
+
+FastAPI + PostgreSQL is minimal on purpose:
+- User registration/login
+- Token management
+- GHS computation (reads from ThingsBoard API)
+- Proxy: Flutter asks FastAPI → FastAPI asks ThingsBoard
+
+Sensor data is never stored in PostgreSQL. Alarm logic is never written in Python. ThingsBoard handles all IoT plumbing.
+
+---
+
+## Multiple Devices Per User
+
+One user can own multiple ESP32 setups (multiple plants, multiple rooms). The mapping table is one-to-many:
+
+```
+PostgreSQL — devices table
+┌─────────────┬──────────────────────────────────────┬──────────────┐
+│ user_id     │ tb_device_id                         │ device_name  │
+├─────────────┼──────────────────────────────────────┼──────────────┤
+│ user_001    │ xxxx-xxxx-xxxx-xxxx-xxxx-aaaa        │ Living Room  │
+│ user_001    │ xxxx-xxxx-xxxx-xxxx-xxxx-bbbb        │ Balcony      │
+│ user_002    │ xxxx-xxxx-xxxx-xxxx-xxxx-cccc        │ Kitchen      │
+└─────────────┴──────────────────────────────────────┴──────────────┘
+```
+
+FastAPI fetches all `tb_device_id`s for the user, queries each from ThingsBoard in parallel, and returns them together.
+
+---
+
+## Scalability
+
+| Layer | Approach |
+|-------|----------|
+| ESP32 → TB (MQTT) | ThingsBoard handles millions of concurrent MQTT connections |
+| ThingsBoard storage | Purpose-built IoT time-series DB — no custom storage layer needed |
+| FastAPI | Stateless — horizontal scaling behind nginx / Traefik / ALB |
+| PostgreSQL | User accounts + device mappings only — row count stays small |
+| GHS computation | Stateless pure computation — scales with FastAPI instances |
+
+Real-time telemetry is delivered over WebSocket (persistent connection). The FastAPI proxy adds one connection setup cost, not a per-message round trip.
+
+At higher load: multiple FastAPI instances behind a gateway, one ThingsBoard WebSocket connection per device fanned out to all subscribing Flutter clients, Redis caching for historical TB queries.
 
 ---
 
@@ -112,8 +179,9 @@ ESP32 ──MQTT──→ ThingsBoard ──REST──→ FastAPI ──REST/WS�
 
 | Layer | Who | Token | Flows |
 |-------|-----|-------|-------|
-| App User | Flutter → FastAPI | FastAPI RS256 JWT | register / login / logout |
-| ThingsBoard | FastAPI → ThingsBoard | TB API key + service account JWT | Proxy calls, never in app |
+| App user | Flutter → FastAPI | FastAPI RS256 JWT | register / login / logout |
+| ThingsBoard | FastAPI → ThingsBoard | TB tenant admin JWT | Proxy calls, never leaves server |
+| ESP32 | ESP32 → ThingsBoard | TB device access token | MQTT only, provisioned once |
 
 ### GoRouter Auth Guard
 
