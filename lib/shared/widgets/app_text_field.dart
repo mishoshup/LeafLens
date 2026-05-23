@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 
 /// Consistent text field for LeafLens forms.
-/// Wraps TextField with app theme styling.
+/// Uses outlined border with floating label.
 class AppTextField extends StatelessWidget {
-  final String label;
   final String? hint;
   final bool obscureText;
   final TextEditingController? controller;
@@ -14,7 +13,6 @@ class AppTextField extends StatelessWidget {
 
   const AppTextField({
     super.key,
-    required this.label,
     this.hint,
     this.obscureText = false,
     this.controller,
@@ -26,24 +24,20 @@ class AppTextField extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(label, style: Theme.of(context).textTheme.bodyLarge),
-        const SizedBox(height: 6),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
-          validator: validator,
-          decoration: InputDecoration(
-            hintText: hint,
-            prefixIcon: prefixIcon,
-            suffixIcon: suffixIcon,
-          ),
-        ),
-      ],
+    return TextFormField(
+      controller: controller,
+      obscureText: obscureText,
+      keyboardType: keyboardType,
+      validator: validator,
+      decoration: InputDecoration(
+        labelText: hint,
+        floatingLabelBehavior: FloatingLabelBehavior.auto,
+        border: const OutlineInputBorder(),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        prefixIcon: prefixIcon,
+        suffixIcon: suffixIcon,
+      ),
     );
   }
 }

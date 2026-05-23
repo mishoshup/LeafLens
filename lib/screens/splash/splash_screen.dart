@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:leaflens/shared/widgets/background_ellipse.dart';
 import 'package:leaflens/shared/widgets/leaf_lens_logo.dart';
 import 'package:leaflens/theme/app_colors.dart';
@@ -10,19 +9,19 @@ extension on BuildContext {
   ColorScheme get colors => Theme.of(this).colorScheme;
   void navigateTo(String route) => go(route);
 
-  TextStyle get brandStyle => GoogleFonts.inter(
+  TextStyle get brandStyle => const TextStyle(
     fontWeight: FontWeight.w700,
     fontSize: 28,
     color: AppColors.offWhite,
   );
 
-  TextStyle get taglineStyle => GoogleFonts.inter(
+  TextStyle get taglineStyle => const TextStyle(
     fontWeight: FontWeight.w700,
     fontSize: 26,
     color: AppColors.offWhite,
     fontStyle: FontStyle.italic,
   );
-  TextStyle get buttonStyle => GoogleFonts.inter(
+  TextStyle get buttonStyle => const TextStyle(
     fontWeight: FontWeight.w800,
     fontSize: 22,
     color: AppColors.offWhite,
@@ -38,7 +37,7 @@ class SplashScreen extends StatelessWidget {
       backgroundColor: AppColors.lightGreenBg,
       body: Stack(
         children: [
-          SafeArea(child: BackgroundEllipse()),
+          BackgroundEllipse(),
           SafeArea(child: _SplashContent()),
         ],
       ),

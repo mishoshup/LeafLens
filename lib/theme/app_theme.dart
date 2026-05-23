@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:leaflens/theme/app_colors.dart';
+import 'package:leaflens/theme/app_typography.dart';
 
 class AppTheme {
   AppTheme._();
@@ -16,30 +16,20 @@ class AppTheme {
       colorScheme: colorScheme,
       scaffoldBackgroundColor: AppColors.offWhite,
 
-      // Typography
-      textTheme: GoogleFonts.interTextTheme().copyWith(
-        // Sensor values (big numbers)
-        headlineLarge: GoogleFonts.inter(
-          fontWeight: FontWeight.w700, fontSize: 36,
-        ),
-        // Gauge values
-        headlineMedium: GoogleFonts.inter(
-          fontWeight: FontWeight.w800, fontSize: 28,
-        ),
-        // Card titles
-        titleLarge: GoogleFonts.inter(
-          fontWeight: FontWeight.w700, fontSize: 20,
-        ),
-        // Body
-        bodyLarge: GoogleFonts.roboto(
-          fontWeight: FontWeight.w500, fontSize: 16,
-        ),
-        bodyMedium: GoogleFonts.roboto(
-          fontWeight: FontWeight.w400, fontSize: 14,
-        ),
-        bodySmall: GoogleFonts.roboto(
-          fontWeight: FontWeight.w400, fontSize: 12,
-        ),
+      // Typography — Lexend is the default via pubspec.yaml fonts:
+      textTheme: TextTheme(
+        displayLarge: AppTypography.displayLarge,
+        displayMedium: AppTypography.displayMedium,
+        displaySmall: AppTypography.displaySmall,
+        headlineLarge: AppTypography.headlineLarge,
+        headlineMedium: AppTypography.headlineMedium,
+        titleLarge: AppTypography.titleLarge,
+        titleMedium: AppTypography.titleMedium,
+        labelLarge: AppTypography.labelLarge,
+        labelMedium: AppTypography.labelMedium,
+        bodyLarge: AppTypography.bodyLarge,
+        bodyMedium: AppTypography.bodyMedium,
+        bodySmall: AppTypography.bodySmall,
       ),
 
       // AppBar
@@ -69,7 +59,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(50),
           ),
-          textStyle: GoogleFonts.inter(
+          textStyle: const TextStyle(
             fontWeight: FontWeight.w600, fontSize: 16,
           ),
         ),
@@ -107,7 +97,7 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: colorScheme.error),
         ),
-        hintStyle: GoogleFonts.roboto(
+        hintStyle: TextStyle(
           fontWeight: FontWeight.w400,
           fontSize: 16,
           color: colorScheme.onSurface.withValues(alpha: 0.4),
@@ -117,7 +107,7 @@ class AppTheme {
       // Chips
       chipTheme: ChipThemeData(
         backgroundColor: colorScheme.surfaceContainerHighest,
-        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500),
+        labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(8),
         ),

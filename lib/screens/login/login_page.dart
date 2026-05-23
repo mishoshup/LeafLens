@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import 'package:leaflens/features/auth/data/auth_repository.dart';
 import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
@@ -14,28 +13,28 @@ extension on BuildContext {
   ColorScheme get colors => Theme.of(this).colorScheme;
   TextTheme get textTheme => Theme.of(this).textTheme;
 
-  TextStyle get loginTitleStyle => GoogleFonts.poppins(
+  TextStyle get loginTitleStyle => const TextStyle(
     fontWeight: FontWeight.w600,
     fontSize: 38,
     color: AppColors.deepGreen,
   );
 
-  TextStyle get googleButtonStyle => GoogleFonts.poppins(
+  TextStyle get googleButtonStyle => const TextStyle(
     fontWeight: FontWeight.w600,
     fontSize: 16,
     color: AppColors.white,
   );
 
   TextStyle get loginButtonStyle =>
-      GoogleFonts.poppins(fontWeight: FontWeight.w600, fontSize: 20);
+      const TextStyle(fontWeight: FontWeight.w600, fontSize: 20);
 
-  TextStyle get signUpMuted => GoogleFonts.lexend(
+  TextStyle get signUpMuted => TextStyle(
     fontWeight: FontWeight.w300,
     fontSize: 16,
     color: AppColors.offBlack.withValues(alpha: 0.6),
   );
 
-  TextStyle get signUpLink => GoogleFonts.lexend(
+  TextStyle get signUpLink => const TextStyle(
     fontWeight: FontWeight.w700,
     fontSize: 16,
     color: AppColors.mediumGreen,
@@ -145,7 +144,7 @@ class _GoogleSignInButton extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 32),
       child: FilledButton.tonal(
-        onPressed: () {},
+        onPressed: () => throw UnimplementedError('Google sign-in'),
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.offBlack,
           foregroundColor: AppColors.white,
@@ -203,7 +202,7 @@ class _EmailField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppTextField(
-      label: 'Email',
+      hint: 'Email',
       controller: controller,
       keyboardType: TextInputType.emailAddress,
       validator: (v) => (v == null || v.isEmpty) ? 'Enter your email' : null,
@@ -225,7 +224,7 @@ class _PasswordField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return AppTextField(
-      label: 'Password',
+      hint: 'Password',
       controller: controller,
       obscureText: obscure,
       validator: (v) => (v == null || v.isEmpty) ? 'Enter your password' : null,
@@ -277,7 +276,7 @@ class _SignUpRow extends StatelessWidget {
       children: [
         Text("Don't have an account? ", style: context.signUpMuted),
         GestureDetector(
-          onTap: () {},
+          onTap: () => context.go('/signup'),
           child: Text('Sign up', style: context.signUpLink),
         ),
       ],

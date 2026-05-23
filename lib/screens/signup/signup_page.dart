@@ -1,0 +1,397 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
+import 'package:go_router/go_router.dart';
+import 'package:leaflens/features/auth/data/auth_repository.dart';
+import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
+import 'package:leaflens/shared/widgets/app_text_field.dart';
+import 'package:leaflens/theme/app_colors.dart';
+
+extension on BuildContext {
+  ColorScheme get colors => Theme.of(this).colorScheme;
+  TextTheme get textTheme => Theme.of(this).textTheme;
+
+  TextStyle get signUpTitleStyle => const TextStyle(
+    fontWeight: FontWeight.w600,
+    fontSize: 30,
+    color: AppColors.deepGreen,
+  );
+
+  TextStyle get googleButtonStyle => const TextStyle(
+    fontWeight: FontWeight.w600,
+    fontSize: 16,
+    color: AppColors.offWhite,
+  );
+
+  TextStyle get signUpButtonStyle =>
+      const TextStyle(fontWeight: FontWeight.w600, fontSize: 22);
+
+  TextStyle get termsMuted => const TextStyle(
+    fontWeight: FontWeight.w300,
+    fontSize: 16,
+    color: AppColors.offBlack,
+  );
+
+  TextStyle get termsLink => const TextStyle(
+    fontWeight: FontWeight.w400,
+    fontSize: 16,
+    color: AppColors.redDark,
+  );
+
+  TextStyle get loginMuted => TextStyle(
+    fontWeight: FontWeight.w300,
+    fontSize: 16,
+    color: AppColors.offBlack.withValues(alpha: 0.6),
+  );
+
+  TextStyle get loginLink => const TextStyle(
+    fontWeight: FontWeight.w700,
+    fontSize: 16,
+    color: AppColors.mediumGreen,
+  );
+}
+
+class SignUpPage extends ConsumerStatefulWidget {
+  const SignUpPage({super.key});
+
+  @override
+  ConsumerState<SignUpPage> createState() => _SignUpPageState();
+}
+
+class _SignUpPageState extends ConsumerState<SignUpPage> {
+  final _formKey = GlobalKey<FormState>();
+  final _nameCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+  bool _obscurePassword = true;
+  bool _agreeToTerms = false;
+  bool _loading = false;
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    _phoneCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _handleSignUp() async {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_agreeToTerms) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please accept the terms to continue')),
+      );
+      return;
+    }
+
+    setState(() => _loading = true);
+    try {
+      final repo = ref.read(authRepositoryProvider);
+      await repo.register(_emailCtrl.text.trim(), _passwordCtrl.text);
+      ref.invalidate(authStateProvider);
+      if (mounted) context.go('/dashboard');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: context.colors.error,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.offWhite,
+      body: SafeArea(
+        child: Center(
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  const Center(child: _SignUpHeader()),
+                  const _GoogleSignUpButton(),
+                  const _OrDivider(),
+                  _NameField(controller: _nameCtrl),
+                  const SizedBox(height: 12),
+                  _EmailField(controller: _emailCtrl),
+                  const SizedBox(height: 12),
+                  _PhoneField(controller: _phoneCtrl),
+                  const SizedBox(height: 12),
+                  _PasswordField(
+                    controller: _passwordCtrl,
+                    obscure: _obscurePassword,
+                    onToggle: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
+                  ),
+                  const SizedBox(height: 20),
+                  _TermsCheckbox(
+                    agreed: _agreeToTerms,
+                    onChanged: (v) => setState(() => _agreeToTerms = v),
+                  ),
+                  const SizedBox(height: 24),
+                  _SignUpButton(loading: _loading, onPressed: _handleSignUp),
+                  const SizedBox(height: 16),
+                  const _LoginRow(),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+//
+// Private widgets
+//
+
+class _SignUpHeader extends StatelessWidget {
+  const _SignUpHeader();
+
+  @override
+  Widget build(BuildContext context) {
+    return Text('Sign up', style: context.signUpTitleStyle);
+  }
+}
+
+class _GoogleSignUpButton extends StatelessWidget {
+  const _GoogleSignUpButton();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 32),
+      child: FilledButton.tonal(
+        onPressed: () => throw UnimplementedError('Google sign-up'),
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.offBlack,
+          foregroundColor: AppColors.white,
+          padding: const EdgeInsets.symmetric(vertical: 18),
+          shape: const StadiumBorder(),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            SvgPicture.asset(
+              'assets/images/google_logo.svg',
+              width: 22,
+              height: 22,
+            ),
+            const SizedBox(width: 12),
+            Text('Sign up with Google', style: context.googleButtonStyle),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _OrDivider extends StatelessWidget {
+  const _OrDivider();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
+      child: Row(
+        children: [
+          Expanded(child: Divider(color: context.colors.outlineVariant)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'Or continue with Email',
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.colors.outline,
+              ),
+            ),
+          ),
+          Expanded(child: Divider(color: context.colors.outlineVariant)),
+        ],
+      ),
+    );
+  }
+}
+
+class _NameField extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _NameField({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      hint: 'Full Name',
+      controller: controller,
+      validator: (v) => (v == null || v.isEmpty) ? 'Enter your name' : null,
+    );
+  }
+}
+
+class _EmailField extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _EmailField({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      hint: 'Email',
+      controller: controller,
+      keyboardType: TextInputType.emailAddress,
+      validator: (v) => (v == null || v.isEmpty) ? 'Enter your email' : null,
+    );
+  }
+}
+
+class _PhoneField extends StatelessWidget {
+  final TextEditingController controller;
+
+  const _PhoneField({required this.controller});
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      hint: 'Phone Number',
+      controller: controller,
+      keyboardType: TextInputType.phone,
+      validator: (v) => (v == null || v.isEmpty) ? 'Enter your phone number' : null,
+    );
+  }
+}
+
+class _PasswordField extends StatelessWidget {
+  final TextEditingController controller;
+  final bool obscure;
+  final VoidCallback onToggle;
+
+  const _PasswordField({
+    required this.controller,
+    required this.obscure,
+    required this.onToggle,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      hint: 'Password',
+      controller: controller,
+      obscureText: obscure,
+      validator: (v) =>
+          (v == null || v.isEmpty) ? 'Enter your password' : null,
+      suffixIcon: IconButton(
+        icon: Icon(
+          obscure ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+        ),
+        onPressed: onToggle,
+      ),
+    );
+  }
+}
+
+class _TermsCheckbox extends StatelessWidget {
+  final bool agreed;
+  final ValueChanged<bool> onChanged;
+
+  const _TermsCheckbox({required this.agreed, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 24,
+          height: 24,
+          child: Checkbox(
+            value: agreed,
+            onChanged: (v) => onChanged(v ?? false),
+            side: BorderSide(color: context.colors.outline),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: RichText(
+            text: TextSpan(
+              style: context.termsMuted,
+              children: [
+                const TextSpan(text: 'I accept '),
+                TextSpan(
+                  text: 'Terms of Service',
+                  style: context.termsLink,
+                  recognizer: null,
+                ),
+                const TextSpan(text: ' and '),
+                TextSpan(
+                  text: 'Privacy Policy',
+                  style: context.termsLink,
+                  recognizer: null,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SignUpButton extends StatelessWidget {
+  final bool loading;
+  final VoidCallback onPressed;
+
+  const _SignUpButton({required this.loading, required this.onPressed});
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton(
+      onPressed: loading ? null : onPressed,
+      style: FilledButton.styleFrom(
+        padding: const EdgeInsets.symmetric(vertical: 18),
+        shape: const StadiumBorder(),
+      ),
+      child: loading
+          ? const SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: AppColors.offWhite,
+              ),
+            )
+          : Text('Sign Up', style: context.signUpButtonStyle),
+    );
+  }
+}
+
+class _LoginRow extends StatelessWidget {
+  const _LoginRow();
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Text('Already have an account? ', style: context.loginMuted),
+        GestureDetector(
+          onTap: () => context.go('/login'),
+          child: Text('Login', style: context.loginLink),
+        ),
+      ],
+    );
+  }
+}

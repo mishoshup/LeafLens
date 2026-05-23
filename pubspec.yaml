@@ -43,7 +43,6 @@ dependencies:
 
   # ── UI Utilities ──────────────────────────────────────────
   flutter_svg: ^2.3.0
-  google_fonts: ^8.1.0
   cupertino_icons: ^1.0.8
   shimmer: ^3.0.0
   intl: ^0.20.2
@@ -64,3 +63,8 @@ flutter:
 
   assets:
     - assets/images/
+
+  fonts:
+    - family: Lexend
+      fonts:
+        - asset: assets/fonts/Lexend-Variable.ttf

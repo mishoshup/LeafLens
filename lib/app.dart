@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
+import 'package:leaflens/screens/signup/signup_page.dart';
 import 'package:leaflens/screens/splash/splash_screen.dart';
 import 'package:leaflens/screens/login/login_page.dart';
 
@@ -29,8 +30,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       final path = state.matchedLocation;
 
       if (path == '/splash') return null;
-      if (!isLoggedIn && path != '/login') return '/login';
-      if (isLoggedIn && path == '/login') return '/dashboard';
+      if (!isLoggedIn && path != '/login' && path != '/signup') return '/login';
+      if (isLoggedIn && (path == '/login' || path == '/signup')) return '/dashboard';
       return null;
     },
     routes: [
@@ -41,6 +42,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/login',
         builder: (_, _) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (_, _) => const SignUpPage(),
       ),
       GoRoute(
         path: '/dashboard',
