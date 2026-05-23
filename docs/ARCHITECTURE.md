@@ -60,7 +60,7 @@ The ESP32 ships with base firmware broadcasting a BLE signal. No static IP, no h
 ## Steady State Data Flow
 
 ```
-ESP32 ──MQTT──→ ThingsBoard ──REST/WS──→ FastAPI ──REST/WS──→ Flutter
+ESP32 ──MQTT──→ ThingsBoard ←──REST/WS──→ FastAPI ──REST/WS──→ Flutter
 ```
 
 Flutter never talks to ThingsBoard directly. All TB credentials stay on the FastAPI server. Flutter authenticates with FastAPI's own JWT.

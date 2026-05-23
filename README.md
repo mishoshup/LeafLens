@@ -37,16 +37,22 @@ autonomously manages water refill so plants survive even when you're away.
 LeafLens is a **three-tier system** with **BLE-based device provisioning**:
 
 ```
-[Provisioning]                         [Steady State]
-BLE: app→ESP32                         ESP32 ──MQTT──→ ThingsBoard ←──REST──→ FastAPI ──REST/WS──→ Flutter
-  (Wi-Fi + user_id)
-  ↓
-ESP32 → POST /api/v1/devices/register → FastAPI
-  → FastAPI creates device in ThingsBoard (REST)
-  → FastAPI retrieves TB-generated token (REST)
-  → FastAPI saves user_id ↔ device_id to PostgreSQL
-  → FastAPI returns token to ESP32
-  → ESP32 saves token to flash, connects via MQTT
+Provisioning (one-time BLE setup)
+
+  1. Flutter ──BLE──→ ESP32          Wi-Fi creds + user_id
+  2. ESP32 connects to Wi-Fi
+  3. ESP32  ──POST──→ FastAPI        /api/v1/devices/register
+  4. FastAPI ─────→ ThingsBoard     create device, retrieve token
+  5. FastAPI ─────→ PostgreSQL      save user_id ↔ device_id
+  6. FastAPI ─────→ ESP32           ThingsBoard device token
+  7. ESP32 stores token in flash
+  8. ESP32  ──MQTT──→ ThingsBoard   telemetry stream begins
+
+───────────────────────────────────────────────────────────
+
+Steady State
+
+  ESP32 ──MQTT──→ ThingsBoard ←──REST/WS──→ FastAPI ──REST/WS──→ Flutter
 ```
 
 | Layer | Technology | Role |
