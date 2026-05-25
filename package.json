@@ -1,0 +1,24 @@
+{
+  "name": "leaflens",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "prepare": "husky",
+    "lint": "flutter analyze",
+    "lint:fix": "dart fix --apply",
+    "lint:ci": "flutter analyze",
+    "format": "dart format .",
+    "format:check": "dart format --output=none --set-exit-if-changed .",
+    "lint-staged": "lint-staged"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.0.1",
+    "@commitlint/config-conventional": "^21.0.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.4"
+  },
+  "lint-staged": {
+    "*.dart": ["dart format", "dart analyze --fatal-infos"]
+  },
+  "packageManager": "pnpm@11.1.2"
+}

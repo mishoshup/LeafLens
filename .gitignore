@@ -52,5 +52,8 @@ ios/Runner.xcworkspace/xcshareddata/swiftpm/
 # Xcode scheme backups
 ios/Runner.xcodeproj/xcshareddata/xcschemes/Runner.xcscheme.backup
 
+# Node.js / Husky tooling
+node_modules/
+
 # Local dev tools (not part of project)
 /tools/

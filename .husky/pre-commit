@@ -1,0 +1,31 @@
+#!/bin/sh
+
+echo "🔧 Formatting & linting staged files..."
+echo ""
+
+staged_output=$(pnpm exec lint-staged 2>&1)
+staged_exit=$?
+
+if [ $staged_exit -ne 0 ]; then
+  echo ""
+  echo "❌ lint-staged failed"
+  echo ""
+  echo "   Possible issues:"
+  echo ""
+  echo "   1. dart format failed — syntax error or malformed code"
+  echo "   2. dart analyze found errors, warnings, or infos"
+  echo ""
+  echo "   Next steps:"
+  echo ""
+  echo "   1. Run dart format on the failing file(s)"
+  echo "   2. Run dart analyze --fatal-infos <file> to see details"
+  echo "   3. Fix issues, re-stage, and commit again"
+  echo ""
+  echo "   Bypass: git commit --no-verify"
+  echo "   But fix it before pushing — pre-push will also reject it."
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "✅ Formatting & linting passed"

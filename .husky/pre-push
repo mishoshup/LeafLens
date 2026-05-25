@@ -1,0 +1,28 @@
+#!/bin/sh
+
+echo "🔍 Running flutter analyze..."
+echo
+
+analyze_output=$(flutter analyze 2>&1)
+analyze_exit=$?
+
+if [ $analyze_exit -ne 0 ]; then
+  error_count=$(echo "$analyze_output" | grep -E "error" | grep -cE "^.*error" 2>/dev/null || echo "?")
+
+  echo ""
+  echo "❌ flutter analyze failed ($error_count error(s))"
+  echo ""
+  echo "   Next steps:"
+  echo ""
+  echo "   1. Review issues above — fix errors and warnings"
+  echo "   2. Run dart fix --apply for auto-resolvable issues"
+  echo "   3. Stage fixes and commit again"
+  echo ""
+  echo "   If you need to bypass: git push --no-verify"
+  echo "   But don't bypass for main or thesis branches — CI will reject them anyway."
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "✅ flutter analyze passed — pushing"

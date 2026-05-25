@@ -36,8 +36,9 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (path == '/splash') return null;
       if (!isLoggedIn && path != '/login' && path != '/signup') return '/login';
-      if (isLoggedIn && (path == '/login' || path == '/signup'))
+      if (isLoggedIn && (path == '/login' || path == '/signup')) {
         return '/dashboard';
+      }
       return null;
     },
     routes: [

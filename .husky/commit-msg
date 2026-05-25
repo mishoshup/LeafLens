@@ -1,0 +1,59 @@
+#!/bin/sh
+
+commit_subject=$(head -1 "$1")
+commit_body=$(tail -n +3 "$1" | sed '/^[[:space:]]*$/d' | head -1)
+
+echo "📝 Checking commit message..."
+echo ""
+echo "  $commit_subject"
+echo ""
+
+if ! pnpm exec commitlint --edit "$1" >/dev/null 2>&1; then
+  echo ""
+  echo "❌ Invalid commit message format"
+  echo ""
+  echo "   Expected: type(scope): description"
+  echo ""
+  echo "   Type must be one of:"
+  echo ""
+  echo "   feat      New feature"
+  echo "   fix       Bug fix"
+  echo "   chore     Maintenance"
+  echo "   refactor  Code restructuring"
+  echo "   docs      Documentation only"
+  echo "   style     Formatting, linting"
+  echo "   test      Adding tests"
+  echo "   build     Build system"
+  echo "   ci        CI config"
+  echo "   perf      Performance"
+  echo "   revert    Revert change"
+  echo ""
+  echo "   Example:"
+  echo "     feat(dashboard): add GHS gauge widget"
+  echo ""
+  echo "   Bypass: git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+if [ -z "$commit_body" ]; then
+  echo ""
+  echo "❌ Commit message needs a description body"
+  echo ""
+  echo "   Example:"
+  echo ""
+  echo "     feat(dashboard): add GHS gauge widget"
+  echo ""
+  echo "     - Add CircularGauge widget with green/yellow/red zones"
+  echo "     - Wire to GrowthHealthScore riverpod provider"
+  echo "     - Handle stale-sensor fallback state"
+  echo ""
+  echo "   Describe the why and what — not the code itself."
+  echo ""
+  echo "   Bypass: git commit --no-verify"
+  echo ""
+  exit 1
+fi
+
+echo ""
+echo "✅ Commit message accepted"
