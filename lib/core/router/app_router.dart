@@ -7,7 +7,10 @@ import 'package:leaflens/features/auth/presentation/login_page.dart';
 import 'package:leaflens/features/auth/presentation/signup_page.dart';
 import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
 import 'package:leaflens/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:leaflens/features/dashboard/presentation/dashboard_shell.dart';
+import 'package:leaflens/features/settings/presentation/settings_screen.dart';
 import 'package:leaflens/features/splash/presentation/splash_screen.dart';
+import 'package:leaflens/features/stats/presentation/stats_screen.dart';
 
 /// Centralised GoRouter configuration for LeafLens.
 ///
@@ -28,9 +31,6 @@ class AppRouter {
       initialLocation: '/splash',
       redirect: (context, state) {
         final isLoggedIn = auth.value != null;
-        // LeafLensAuth.accessToken is available synchronously
-        // on cold start (Supabase restores session from secure
-        // storage before the stream emits).
         return AuthGuard.call(
           state: state,
           isLoggedIn: isLoggedIn,
@@ -50,9 +50,45 @@ class AppRouter {
           path: '/signup',
           builder: (_, _) => const SignUpPage(),
         ),
-        GoRoute(
-          path: '/dashboard',
-          builder: (_, _) => const DashboardScreen(),
+        StatefulShellRoute.indexedStack(
+          builder: (_, _, navigationShell) => DashboardShell(
+            navigationShell: navigationShell,
+          ),
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/dashboard',
+                  pageBuilder: (_, state) => NoTransitionPage(
+                    key: state.pageKey,
+                    child: const DashboardScreen(),
+                  ),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/stats',
+                  pageBuilder: (_, state) => NoTransitionPage(
+                    key: state.pageKey,
+                    child: const StatsScreen(),
+                  ),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/settings',
+                  pageBuilder: (_, state) => NoTransitionPage(
+                    key: state.pageKey,
+                    child: const SettingsScreen(),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
       ],
     );

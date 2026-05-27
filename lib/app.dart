@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:leaflens/core/router/app_router.dart';
+import 'package:leaflens/core/theme/app_colors.dart';
 import 'package:leaflens/core/theme/app_theme.dart';
 import 'package:leaflens/shared/notifications/leaf_lens_notification_overlay.dart';
 
@@ -20,6 +21,7 @@ class LeafLensApp extends ConsumerWidget {
         title: 'LeafLens',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        color: AppColors.lightGreenBg,
         routerConfig: router,
       ),
     );

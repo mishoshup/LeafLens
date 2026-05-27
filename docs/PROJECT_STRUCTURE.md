@@ -131,7 +131,13 @@ lib/
 │   │   │   ├── sensor_reading.dart        # Data model with staleness tracking
 │   │   │   └── water_system_state.dart    # Pump/mist/refill status
 │   │   └── presentation/
-│   │       └── dashboard_screen.dart      # View: ConsumerWidget — placeholder dashboard
+│   │       ├── dashboard_screen.dart      # View: ConsumerStatefulWidget — pinned top + scrollable sensor cards
+│   │       ├── dashboard_shell.dart       # Shell: green bg + ellipse + floating nav bar (carousel)
+│   │       └── widgets/
+│   │           ├── action_switch.dart     # Toggle pill with animated knob (Mist/Water/Refill)
+│   │           ├── health_score_card.dart # GHS card with gauge + status + warning
+│   │           ├── mini_gauge.dart        # Circular arc gauge (CustomPaint, reusable)
+│   │           └── sensor_card.dart       # Sensor reading card (gauge + info + "More")
 │   └── splash/
 │       └── presentation/
 │           └── splash_screen.dart         # View: StatelessWidget — decorative SVG + CTA

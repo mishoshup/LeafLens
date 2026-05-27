@@ -110,4 +110,29 @@ class AppColors {
 
   /// Border colour for text input fields.
   static const Color inputBorder = Color(0xFFDADCE0);
+
+  // Dashboard-specific
+  /// Semi-transparent medium green for the background ellipse overlay.
+  static const Color mediumGreenOverlay = Color(0x99409761);
+
+  /// Card background used for sensor and health score cards.
+  static const Color cardBackground = Color(0xB3D9D9D9);
+
+  /// Green arc colour for healthy sensor gauges.
+  static const Color gaugeGreen = Color(0x991B6F0A);
+
+  /// Orange arc colour for warning sensor gauges.
+  static const Color gaugeOrange = Color(0x99FFB703);
+
+  /// Action switch pill background.
+  static const Color switchBackground = Color(0x9960AE88);
+
+  /// Action switch toggle track colour.
+  static const Color switchTrack = Color(0xFF316763);
+
+  /// Floating bottom navigation bar background.
+  static const Color navBarBackground = Color(0xA6263626);
+
+  /// Warning text colour for health alerts.
+  static const Color warningText = Color(0xD9E5A00A);
 }

@@ -19,7 +19,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       colorScheme: colorScheme,
-      scaffoldBackgroundColor: AppColors.offWhite,
+      scaffoldBackgroundColor: AppColors.lightGreenBg,
 
       // Typography — Lexend is the default via pubspec.yaml fonts:
       textTheme: const TextTheme(

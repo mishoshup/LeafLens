@@ -4,7 +4,7 @@
 > **Stack:** Flutter (Material 3) + Riverpod (3.x) + GoRouter + freezed + json_serializable + flutter_svg  
 > **Codegen:** freezed, json_serializable, riverpod_generator via build_runner  
 > **Architecture:** ESP32 → ThingsBoard → FastAPI → Flutter (BLE-provisioned)  
-> **Last updated:** 24 May 2026
+> **Last updated:** 28 May 2026
 
 ---
 
@@ -17,6 +17,7 @@
 3. [Screens](#3-screens)
    - 3.1 [Splash Screen](#31-splash-screen)
    - 3.2 [Login Page](#32-login-page)
+   - 3.3 [Dashboard](#33-dashboard)
 4. [Navigation Flow](#4-navigation-flow)
 5. [Asset Inventory](#5-asset-inventory)
 6. [Conventions](#6-conventions)
@@ -28,19 +29,28 @@
 
 ### 1.1 Colors
 
-All defined in `lib/theme/app_colors.dart`. No hardcoded hex in widgets.
+All defined in `lib/core/theme/app_colors.dart`. No hardcoded hex in widgets.
 
 | Token | Hex | Usage |
 |-------|-----|-------|
-| `offWhite` | `#F8F9FA` | Screen backgrounds |
+| `offWhite` | `#F8F9FA` | Screen backgrounds (login, signup) |
 | `offBlack` | `#1A1A1A` | Google button bg, text on light |
-| `lightGreenBg` | `#A3B88C` | Splash screen background |
-| `mediumGreen` | `#409761` | Primary actions, links |
+| `lightGreenBg` | `#A3B88C` | Splash screen background, scaffold bg, shell bg |
+| `mediumGreen` | `#409761` | Primary actions, links, avatar bg |
 | `deepGreen` | `#083722` | Headings, brand emphasis |
 | `white` | `#FFFFFF` | Text on dark backgrounds |
-| `redAlert` | `#D05555` | Error states |
+| `redAlert` | `#D05555` | Error states, critical sensor gauges |
+| `darkGreenText` | — | Status text on sensor cards |
+| `mediumGreenOverlay` | `0x99409761` | Semi-transparent overlay for background ellipse |
+| `cardBackground` | `0xB3D9D9D9` | Sensor cards, health score card |
+| `gaugeGreen` | `0x991B6F0A` | Healthy sensor gauges |
+| `gaugeOrange` | `0x99FFB703` | Warning sensor gauges |
+| `switchBackground` | `0x9960AE88` | Action switch pill background |
+| `switchTrack` | `0xFF316763` | Action switch toggle track |
+| `navBarBackground` | `0xA6263626` | Floating bottom navigation bar |
+| `warningText` | `0xD9E5A00A` | Health alert warning text |
 
-Full list in `lib/theme/app_colors.dart`.
+Full list in `lib/core/theme/app_colors.dart`.
 
 ### 1.2 Typography
 
@@ -55,7 +65,7 @@ Full list in `lib/theme/app_colors.dart`.
 | Bold 700 | Card titles, section headers |
 | ExtraBold 800 | GHS gauge score, sensor values |
 
-All tokenized in `lib/theme/app_typography.dart`. Per-screen custom styles use file-private `extension on BuildContext` with plain `const TextStyle` — never `GoogleFonts.*()`.
+All tokenized in `lib/core/theme/app_typography.dart`. Per-screen custom styles use file-private `extension on BuildContext` with plain `const TextStyle` — never `GoogleFonts.*()`.
 
 ---
 
@@ -65,70 +75,71 @@ All tokenized in `lib/theme/app_typography.dart`. Per-screen custom styles use f
 
 ```
 lib/
-├── main.dart                       # App entry
-├── app.dart                        # MaterialApp.router with GoRouter
+├── main.dart                           # Entry point — init Sentry/Supabase/Hive, runApp()
+├── app.dart                            # LeafLensApp — theme + router + notification overlay
 ├── core/
-│   ├── config/app_config.dart     # API URLs, Hive box names
+│   ├── config/app_config.dart           # Build-time config via --dart-define-from-file
+│   ├── init/
+│   │   ├── sentry_init.dart
+│   │   └── leaf_lens_auth_init.dart
 │   ├── network/
-│   │   ├── api_client.dart        # HTTP client for FastAPI
-│   │   └── ws_client.dart         # WebSocket client
-│   └── errors/
-│       ├── failures.dart           # Typed exception classes
-│       └── error_handler.dart      # 3-tier: toast + Sentry + metrics
+│   │   ├── api_client.dart              # HTTP client for FastAPI
+│   │   └── ws_client.dart               # WebSocket client
+│   ├── errors/
+│   │   ├── failures.dart                # Sealed Failure hierarchy
+│   │   └── error_handler.dart           # 3-tier: toast + Sentry + metrics
+│   ├── router/
+│   │   ├── app_router.dart              # GoRouter + StatefulShellRoute
+│   │   └── auth_guard.dart              # Auth redirect logic
+│   └── theme/
+│       ├── app_colors.dart              # All colour tokens
+│       ├── app_typography.dart          # Typography tokens (Lexend)
+│       └── app_theme.dart               # ColorScheme.fromSeed, button/card defaults
 ├── features/
 │   ├── auth/
 │   │   ├── data/
-│   │   │   ├── auth_repository.dart       # AuthRepository + @riverpod providers
-│   │   │   └── login_response.dart        # @JsonSerializable token model
-│   │   └── domain/auth_state.dart         # Sealed class
-│   └── dashboard/
-│       ├── data/dashboard_providers.dart   # DashRepo + @riverpod providers
-│       └── domain/
-│           ├── dashboard_update.dart       # @freezed sealed union
-│           ├── growth_health_score.dart    # GHS algorithm
-│           ├── sensor_key.dart
-│           ├── sensor_reading.dart
-│           └── water_system_state.dart
-├── features/
-│   ├── auth/
-│   │   ├── data/
-│   │   │   ├── auth_repository.dart
-│   │   │   └── leaf_lens_auth.dart
+│   │   │   ├── auth_repository.dart     # AuthRepository + @riverpod providers
+│   │   │   └── leaf_lens_auth.dart      # Supabase auth wrapper
 │   │   └── presentation/
 │   │       ├── login_page.dart
 │   │       └── signup_page.dart
 │   ├── dashboard/
-│   │   ├── data/
-│   │   │   └── dashboard_providers.dart
+│   │   ├── data/dashboard_providers.dart
 │   │   ├── domain/
-│   │   │   ├── dashboard_update.dart
-│   │   │   ├── growth_health_score.dart    # GHS algorithm
+│   │   │   ├── dashboard_update.dart    # @freezed sealed union
+│   │   │   ├── growth_health_score.dart # GHS algorithm
 │   │   │   ├── sensor_key.dart
 │   │   │   ├── sensor_reading.dart
 │   │   │   └── water_system_state.dart
 │   │   └── presentation/
-│   │       └── dashboard_screen.dart
+│   │       ├── dashboard_screen.dart    # Main dashboard (pinned top + scrollable cards)
+│   │       ├── dashboard_shell.dart     # Shell: green bg + ellipse + floating nav bar
+│   │       └── widgets/
+│   │           ├── action_switch.dart   # Toggle pill with animated knob
+│   │           ├── health_score_card.dart # GHS card with gauge + warning
+│   │           ├── mini_gauge.dart      # Circular arc gauge (CustomPaint)
+│   │           └── sensor_card.dart     # Sensor reading card (gauge + info + "More")
+│   ├── stats/
+│   │   └── presentation/stats_screen.dart  # Placeholder
+│   ├── settings/
+│   │   └── presentation/settings_screen.dart # Placeholder
 │   └── splash/
-│       └── presentation/
-│           └── splash_screen.dart
-├── shared/
-│   ├── widgets/
-│       ├── app_text_field.dart
-│       ├── app_button.dart
-│       ├── background_ellipse.dart
-│       ├── leaf_lens_logo.dart
-│       ├── health_gauge.dart
-│       ├── sensor_tile.dart
-│       ├── status_badge.dart
-│       ├── sensor_error_boundary.dart
-│       └── offline_banner.dart
-│   └── notifications/
-│       ├── notification_service.dart  # Toastification wrapper
-│       └── app_dialog.dart            # Modal dialog utility
-└── theme/
-    ├── app_colors.dart
-    ├── app_typography.dart
-    └── app_theme.dart
+│       └── presentation/splash_screen.dart
+└── shared/
+    ├── widgets/
+    │   ├── app_text_field.dart
+    │   ├── app_button.dart
+    │   ├── background_ellipse.dart
+    │   ├── leaf_lens_logo.dart
+    │   ├── health_gauge.dart
+    │   ├── sensor_tile.dart
+    │   ├── status_badge.dart
+    │   ├── sensor_error_boundary.dart
+    │   └── offline_banner.dart
+    └── notifications/
+        ├── notification_service.dart    # Toastification wrapper
+        ├── leaf_lens_notification_overlay.dart
+        └── app_dialog.dart
 ```
 
 Generated files (`.g.dart` and `.freezed.dart`) are committed to the repo.
@@ -162,6 +173,19 @@ Generated files (`.g.dart` and `.freezed.dart`) are committed to the repo.
 - Loading state + inline error on wrong credentials
 - "Sign up" link navigates to `/signup`
 
+### 3.3 Dashboard
+
+**File:** `lib/features/dashboard/presentation/dashboard_screen.dart`  
+**Route:** `/dashboard`  
+**State:** `ConsumerStatefulWidget`
+
+The dashboard is wrapped by `DashboardShell` (green background, ellipse, floating nav bar). The screen itself uses a **pinned top + scrollable bottom** layout:
+
+- **Pinned:** Greeting header, 3 action switch toggles (Mist / Water / Refill), Health Score card
+- **Scrollable:** `Expanded` > `ListView` containing 3 sensor cards (Temperature, Humidity, Soil Moisture)
+
+Each sensor card contains a `MiniGauge` (circular arc), sensor name, unit, status text, and a "More" link.
+
 ---
 
 ## 4. Navigation Flow
@@ -173,7 +197,16 @@ Generated files (`.g.dart` and `.freezed.dart`) are committed to the repo.
 /login   ── Login success ──→ /dashboard
 ```
 
-GoRouter redirect guard:
+GoRouter uses `StatefulShellRoute.indexedStack` for the dashboard tabs:
+
+```
+StatefulShellRoute.indexedStack (DashboardShell)
+├── Branch 0: /dashboard  → DashboardScreen
+├── Branch 1: /stats      → StatsScreen
+└── Branch 2: /settings   → SettingsScreen
+```
+
+Auth redirect guard (defined in `lib/core/router/app_router.dart`):
 
 ```dart
 if (path == '/splash') return null;
@@ -229,8 +262,12 @@ if (isLoggedIn && (path == '/login' || path == '/signup')) return '/dashboard';
 | `AppButton` | label, onPressed, variant (4), loading, icon, width | Normal, disabled, loading |
 | `BackgroundEllipse` | assetPath, widthFactor, heightFactor, alignment, fit | — |
 | `LeafLensLogo` | — | SVG render |
-| `HealthGauge` | HealthScoreResult, size | All 5 status colours |
-| `SensorTile` | SensorKey, SensorReading? | Normal, skeleton, stale |
-| `StatusBadge` | HealthStatus | All 5 status colours |
-| `SensorErrorBoundary` | label, child | Normal, error + retry |
-| `OfflineBanner` | (watches authStateProvider) | Hidden, shown |
+
+### Dashboard Widgets (in `features/dashboard/presentation/widgets/`)
+
+| Widget | Props | States |
+|--------|-------|--------|
+| `ActionSwitch` | icon, label, value, onChanged | Off, on (animated knob) |
+| `MiniGauge` | value (0–1), color, size | Arc sweeps proportional to value |
+| `SensorCard` | sensorName, value, unit, unitIcon, statusText, gaugeColor, onMoreTap, isStale | Normal, stale |
+| `HealthScoreCard` | score, statusText, gaugeColor, warningText? | With/without warning |

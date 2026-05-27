@@ -1,6 +1,6 @@
 # LeafLens Screens & Navigation
 
-**Routes defined in:** `lib/app.dart`
+**Routes defined in:** `lib/core/router/app_router.dart`
 
 ---
 
@@ -11,7 +11,11 @@
 | `/splash` | SplashScreen | `StatelessWidget` | ✅ Done |
 | `/login` | LoginPage | `ConsumerStatefulWidget` | ✅ Done |
 | `/signup` | SignUpPage | `ConsumerStatefulWidget` | ✅ Done |
-| `/dashboard` | DashboardScreen | `ConsumerWidget` | ⏳ Placeholder |
+| `/dashboard` | DashboardScreen | `ConsumerStatefulWidget` | ✅ Done |
+| `/stats` | StatsScreen | `StatelessWidget` | ⏳ Placeholder |
+| `/settings` | SettingsScreen | `StatelessWidget` | ⏳ Placeholder |
+
+Dashboard, Stats, and Settings are branches of a `StatefulShellRoute.indexedStack` managed by `DashboardShell`.
 
 ---
 
@@ -136,36 +140,129 @@ Same as login but calls `AuthRepository.register()` instead. Terms checkbox must
 
 ---
 
-## DashboardScreen (Placeholder)
+## DashboardShell
 
-**File:** `lib/app.dart`
+**File:** `lib/features/dashboard/presentation/dashboard_shell.dart`
 
-Currently renders "Dashboard — next build". Will contain:
+App-level shell wrapping the three dashboard tabs. Manages the green background, decorative ellipse, floating bottom nav bar, and horizontal carousel slide animation between tabs.
 
-- `HealthGauge` — circular score indicator with colour-coded arc
-- 4× `SensorTile` — moisture, temperature, humidity, water level
-- Quick action row — Water Now, Mist Now, Refill
-- `OfflineBanner` — shows when WebSocket disconnects
+### Layout
+
+```
+Scaffold
+└── Stack
+    ├── BackgroundEllipse()                    ← decorative, behind everything
+    ├── GestureDetector                        ← horizontal drag for carousel
+    │   └── SafeArea
+    │       └── _buildAnimatedChild()          ← current tab page (or animated pair during drag)
+    └── Positioned(bottom)                     ← floating nav bar
+        └── _FloatingNavBar
+            └── Stack
+                ├── _ActiveIndicator           ← white circle behind active icon
+                └── _NavIcon × 3               ← home, stats, settings
+```
+
+### Tab Navigation
+
+- `StatefulShellRoute.indexedStack` keeps each branch's State alive across tab switches
+- Child routes use `NoTransitionPage` for instant tab switching (no route animation)
+- Horizontal drag gesture on the page area triggers carousel animation
+- Nav bar taps also trigger the same slide animation via `_handleNavTap`
+- Carousel tracks finger during drag, settles to nearest tab on release
+- `snapThreshold = 0.35` — 35% of screen width required to trigger tab switch
+- Rubber-band dampening (`0.3`) when dragging past the edge
+
+---
+
+## DashboardScreen
+
+**File:** `lib/features/dashboard/presentation/dashboard_screen.dart`
+
+Main dashboard showing live sensor readings, action toggles, and the Growth Health Score.
+
+### Layout
+
+```
+Padding(left: 22, top: 24, right: 22)
+└── Column(CrossAxisAlignment.stretch)
+    ├── [PINNED] _GreetingHeader               ← time-based greeting + avatar (tap to logout)
+    ├── SizedBox(height: 16)
+    ├── [PINNED] _ActionSwitchesRow             ← 3 horizontal toggle pills (Mist / Water / Refill)
+    │   └── SizedBox(height: 62)
+    │       └── ListView(scrollDirection: horizontal)
+    │           ├── ActionSwitch(label: 'Mist', icon: cloud_outlined)
+    │           ├── ActionSwitch(label: 'Water', icon: water_drop_outlined)
+    │           └── ActionSwitch(label: 'Refill', icon: autorenew)
+    ├── SizedBox(height: 16)
+    ├── [PINNED] HealthScoreCard                ← GHS gauge + status + warning text
+    ├── SizedBox(height: 12)
+    └── [SCROLLABLE] Expanded
+        └── ListView(bottom padding: 120)       ← 120px clears the floating nav bar
+            ├── SensorCard('Temperature')       ← MiniGauge + value + status + "More"
+            ├── SizedBox(height: 12)
+            ├── SensorCard('Humidity')
+            ├── SizedBox(height: 12)
+            └── SensorCard('Soil Moisture')
+```
+
+### State
+
+| Variable | Type | Purpose |
+|----------|------|---------|
+| `_mistOn` | `bool` | Mist maker toggle state |
+| `_waterOn` | `bool` | Water pump toggle state |
+| `_refillOn` | `bool` | Solenoid valve refill toggle state |
+
+### Key Design Decisions
+
+- **Pinned top, scrollable bottom** — greeting, toggles, and health score stay fixed. Only sensor cards scroll. User sees health status immediately without scrolling.
+- **`Expanded` + `ListView`** pattern — `Expanded` fills remaining vertical space, `ListView` scrolls within it. Top section is not affected by scroll.
+- **`bottom: 120`** on ListView — clears the floating nav bar so the last SensorCard isn't hidden behind it.
+- **3 toggle switches in horizontal ListView** — 3 × 180px + 2 × 10px gaps = 560px. Scrolls horizontally on phones narrower than 560dp (most phones).
+
+---
+
+## StatsScreen (Placeholder)
+
+**File:** `lib/features/stats/presentation/stats_screen.dart`
+
+Currently renders "30-Day Trends — Coming soon". Will contain 30-day historical trend charts for soil moisture, temperature, and humidity.
+
+---
+
+## SettingsScreen (Placeholder)
+
+**File:** `lib/features/settings/presentation/settings_screen.dart`
+
+Currently renders "Settings — Coming soon". Will contain species-specific threshold configuration, notification preferences, and account management.
 
 ---
 
 ## Navigation
 
-GoRouter with auth redirect (defined in `lib/app.dart`):
+GoRouter with `StatefulShellRoute.indexedStack` and auth redirect (defined in `lib/core/router/app_router.dart`):
 
 ```dart
 redirect: (context, state) {
   final isLoggedIn = auth.value != null;
-  final path = state.matchedLocation;
-
-  if (path == '/splash') return null;                       // splash always public
-  if (!isLoggedIn && path != '/login' && path != '/signup') return '/login';
-  if (isLoggedIn && (path == '/login' || path == '/signup')) return '/dashboard';
-  return null;
+  return AuthGuard.call(
+    state: state,
+    isLoggedIn: isLoggedIn,
+    // ...
+  );
 }
 ```
 
-### Rules
+### Shell Route Structure
+
+```
+StatefulShellRoute.indexedStack
+├── Branch 0: /dashboard  → DashboardScreen
+├── Branch 1: /stats      → StatsScreen
+└── Branch 2: /settings   → SettingsScreen
+```
+
+### Auth Redirect Rules
 
 | Current Route | Auth State | Redirect |
 |---------------|------------|----------|
