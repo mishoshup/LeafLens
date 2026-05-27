@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+
+import 'package:leaflens/core/errors/error_handler.dart';
+import 'package:leaflens/core/errors/failures.dart';
 import 'package:leaflens/features/auth/data/auth_repository.dart';
-import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
 import 'package:leaflens/shared/widgets/app_text_field.dart';
 import 'package:leaflens/theme/app_colors.dart';
 
@@ -70,6 +72,8 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
   bool _obscurePassword = true;
   bool _agreeToTerms = false;
   bool _loading = false;
+  String? _formError;
+  String? _termsError;
 
   @override
   void dispose() {
@@ -82,28 +86,30 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
 
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
+
     if (!_agreeToTerms) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please accept the terms to continue')),
-      );
+      setState(() => _termsError = 'Please accept the terms to continue.');
       return;
     }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _formError = null;
+      _termsError = null;
+    });
+
     try {
       final repo = ref.read(authRepositoryProvider);
       await repo.register(_emailCtrl.text.trim(), _passwordCtrl.text);
-      ref.invalidate(authStateProvider);
       if (mounted) context.go('/dashboard');
+    } on InvalidCredentialsFailure {
+      setState(
+        () => _formError = 'This email is already registered. Try logging in.',
+      );
+    } on Failure catch (e) {
+      ErrorHandler.handle(e);
     } on Exception catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: context.colors.error,
-          ),
-        );
-      }
+      ErrorHandler.handle(UnknownFailure(e.toString()));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -140,9 +146,19 @@ class _SignUpPageState extends ConsumerState<SignUpPage> {
                   const SizedBox(height: 20),
                   _TermsCheckbox(
                     agreed: _agreeToTerms,
-                    onChanged: (v) => setState(() => _agreeToTerms = v),
+                    onChanged: (v) {
+                      setState(() {
+                        _agreeToTerms = v;
+                        _termsError = null;
+                      });
+                    },
+                    error: _termsError,
                   ),
-                  const SizedBox(height: 24),
+                  if (_formError != null) ...[
+                    const SizedBox(height: 12),
+                    _FormErrorBanner(message: _formError!),
+                  ],
+                  const SizedBox(height: 20),
                   _SignUpButton(loading: _loading, onPressed: _handleSignUp),
                   const SizedBox(height: 16),
                   const _LoginRow(),
@@ -300,47 +316,72 @@ class _PasswordField extends StatelessWidget {
 }
 
 class _TermsCheckbox extends StatelessWidget {
-  const _TermsCheckbox({required this.agreed, required this.onChanged});
+  const _TermsCheckbox({
+    required this.agreed,
+    required this.onChanged,
+    this.error,
+  });
   final bool agreed;
   final ValueChanged<bool> onChanged;
+  final String? error;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          width: 24,
-          height: 24,
-          child: Checkbox(
-            value: agreed,
-            onChanged: (v) => onChanged(v ?? false),
-            side: BorderSide(color: context.colors.outline),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(4),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                value: agreed,
+                onChanged: (v) => onChanged(v ?? false),
+                side: BorderSide(
+                  color: error != null
+                      ? AppColors.redDark
+                      : context.colors.outline,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: context.termsMuted,
+                  children: [
+                    const TextSpan(text: 'I accept '),
+                    TextSpan(
+                      text: 'Terms of Service',
+                      style: context.termsLink,
+                    ),
+                    const TextSpan(text: ' and '),
+                    TextSpan(
+                      text: 'Privacy Policy',
+                      style: context.termsLink,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 34, top: 4),
+            child: Text(
+              error!,
+              style: const TextStyle(
+                color: AppColors.redDark,
+                fontSize: 12,
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: RichText(
-            text: TextSpan(
-              style: context.termsMuted,
-              children: [
-                const TextSpan(text: 'I accept '),
-                TextSpan(
-                  text: 'Terms of Service',
-                  style: context.termsLink,
-                ),
-                const TextSpan(text: ' and '),
-                TextSpan(
-                  text: 'Privacy Policy',
-                  style: context.termsLink,
-                ),
-              ],
-            ),
-          ),
-        ),
       ],
     );
   }
@@ -387,6 +428,23 @@ class _LoginRow extends StatelessWidget {
           child: Text('Login', style: context.loginLink),
         ),
       ],
+    );
+  }
+}
+
+/// Red error text shown above the submit button on form failures.
+class _FormErrorBanner extends StatelessWidget {
+  const _FormErrorBanner({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      message,
+      style: const TextStyle(
+        color: AppColors.redDark,
+        fontSize: 14,
+      ),
     );
   }
 }

@@ -1,12 +1,8 @@
 /// Application-wide configuration values.
-///
-/// API and WebSocket URLs are set at build time via --dart-define.
-/// Telemetry cache and staleness thresholds are defined here.
 class AppConfig {
   AppConfig._();
 
   /// FastAPI backend base URL (no trailing slash).
-  /// Override via --dart-define=API_URL=... at build time.
   static const String apiUrl = String.fromEnvironment(
     'API_URL',
     defaultValue: 'http://localhost:8000',
@@ -16,6 +12,17 @@ class AppConfig {
   static const String wsUrl = String.fromEnvironment(
     'WS_URL',
     defaultValue: 'ws://localhost:8000/ws',
+  );
+
+  /// Supabase project URL.
+  static const String supabaseUrl = String.fromEnvironment(
+    'SUPABASE_URL',
+    defaultValue: 'http://localhost:54321',
+  );
+
+  /// Supabase anon/public key.
+  static const String supabaseAnonKey = String.fromEnvironment(
+    'SUPABASE_ANON_KEY',
   );
 
   /// Hive box for offline cache.

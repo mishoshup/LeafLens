@@ -12,7 +12,7 @@ import '../../helpers/test_asset_bundle.dart';
 Widget buildTestApp() {
   return ProviderScope(
     overrides: [
-      authStateProvider.overrideWith((ref) async => null),
+      authStateProvider.overrideWith((ref) => Stream<String?>.value(null)),
     ],
     child: DefaultAssetBundle(
       bundle: TestAssetBundle(),

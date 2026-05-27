@@ -33,3 +33,12 @@ class InvalidCredentialsFailure extends Failure {
   /// Creates an [InvalidCredentialsFailure].
   const InvalidCredentialsFailure();
 }
+
+/// A non-Failure exception was caught and wrapped.
+class UnknownFailure extends Failure {
+  /// Creates an [UnknownFailure] wrapping the original [message].
+  const UnknownFailure(this.message);
+
+  /// The original exception message.
+  final String message;
+}

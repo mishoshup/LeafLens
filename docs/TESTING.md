@@ -121,7 +121,7 @@ For screens that depend on `authStateProvider`, `authRepositoryProvider`, etc.
 Widget buildTestApp() {
   return ProviderScope(
     overrides: [
-      authStateProvider.overrideWith((ref) async => null),
+      authStateProvider.overrideWith((ref) => Stream<String?>.value(null)),
     ],
     child: MaterialApp(
       home: Scaffold(

@@ -72,7 +72,9 @@ lib/
 │   ├── network/
 │   │   ├── api_client.dart        # HTTP client for FastAPI
 │   │   └── ws_client.dart         # WebSocket client
-│   └── errors/failures.dart       # Typed exception classes
+│   └── errors/
+│       ├── failures.dart           # Typed exception classes
+│       └── error_handler.dart      # 3-tier: toast + Sentry + metrics
 ├── features/
 │   ├── auth/
 │   │   ├── data/
@@ -91,16 +93,19 @@ lib/
 │   ├── splash/splash_screen.dart
 │   ├── login/login_page.dart
 │   └── signup/signup_page.dart
-├── shared/widgets/
-│   ├── app_text_field.dart
-│   ├── app_button.dart
-│   ├── background_ellipse.dart
-│   ├── leaf_lens_logo.dart
-│   ├── health_gauge.dart
-│   ├── sensor_tile.dart
-│   ├── status_badge.dart
-│   ├── sensor_error_boundary.dart
-│   └── offline_banner.dart
+│   └── widgets/
+│       ├── app_text_field.dart
+│       ├── app_button.dart
+│       ├── background_ellipse.dart
+│       ├── leaf_lens_logo.dart
+│       ├── health_gauge.dart
+│       ├── sensor_tile.dart
+│       ├── status_badge.dart
+│       ├── sensor_error_boundary.dart
+│       └── offline_banner.dart
+│   └── notifications/
+│       ├── notification_service.dart  # Toastification wrapper
+│       └── app_dialog.dart            # Modal dialog utility
 └── theme/
     ├── app_colors.dart
     ├── app_typography.dart
@@ -135,7 +140,7 @@ Generated files (`.g.dart` and `.freezed.dart`) are committed to the repo.
 
 - Email + Password form with validation
 - Google Sign-In button (stub)
-- Loading state + error SnackBar
+- Loading state + inline error on wrong credentials
 - "Sign up" link navigates to `/signup`
 
 ---

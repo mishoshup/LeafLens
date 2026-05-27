@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 import 'package:leaflens/core/config/app_config.dart';
+import 'package:leaflens/core/errors/error_handler.dart';
 import 'package:leaflens/core/errors/failures.dart';
 
 /// HTTP client for FastAPI backend.
@@ -70,11 +71,23 @@ class ApiClient {
 
   Map<String, dynamic> _handle(http.Response response) {
     if (response.statusCode == 401) {
+      if (token == null) {
+        // No session — this is a login/register rejection, not expiry.
+        throw const InvalidCredentialsFailure();
+      }
       token = null;
+      ErrorHandler.handleSilent(const SessionExpiredFailure());
       throw const SessionExpiredFailure();
     }
     if (response.statusCode != 200 && response.statusCode != 201) {
-      throw ApiFailure(response.statusCode, response.body);
+      final failure = ApiFailure(response.statusCode, response.body);
+      // 5xx → full report (toast + Sentry), others → silent (handled by UI).
+      if (response.statusCode >= 500) {
+        ErrorHandler.handle(failure);
+      } else {
+        ErrorHandler.handleSilent(failure);
+      }
+      throw failure;
     }
     if (response.body.isEmpty) return {};
     return jsonDecode(response.body) as Map<String, dynamic>;

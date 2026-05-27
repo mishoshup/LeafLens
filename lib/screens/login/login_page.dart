@@ -3,8 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:leaflens/core/errors/error_handler.dart';
+import 'package:leaflens/core/errors/failures.dart';
 import 'package:leaflens/features/auth/data/auth_repository.dart';
-import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
 import 'package:leaflens/shared/widgets/app_text_field.dart';
 import 'package:leaflens/theme/app_colors.dart';
 
@@ -57,6 +58,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
   bool _loading = false;
+  String? _formError;
 
   @override
   void dispose() {
@@ -68,21 +70,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+      _formError = null;
+    });
+
     try {
       final repo = ref.read(authRepositoryProvider);
       await repo.login(_emailCtrl.text.trim(), _passwordCtrl.text);
-      ref.invalidate(authStateProvider);
       if (mounted) context.go('/dashboard');
+    } on InvalidCredentialsFailure {
+      // Inline: stay on form so user can retry immediately.
+      setState(
+        () => _formError = 'Invalid email or password. Please try again.',
+      );
+    } on Failure catch (e) {
+      // All other failures go through the central handler (toast + Sentry).
+      ErrorHandler.handle(e);
     } on Exception catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: context.colors.error,
-          ),
-        );
-      }
+      ErrorHandler.handle(UnknownFailure(e.toString()));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -112,7 +118,11 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     onToggle: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
                   ),
-                  const SizedBox(height: 28),
+                  if (_formError != null) ...[
+                    const SizedBox(height: 12),
+                    _FormErrorBanner(message: _formError!),
+                  ],
+                  const SizedBox(height: 20),
                   _LoginButton(loading: _loading, onPressed: _handleLogin),
                   const SizedBox(height: 12),
                   const _SignUpRow(),
@@ -280,6 +290,23 @@ class _SignUpRow extends StatelessWidget {
           child: Text('Sign up', style: context.signUpLink),
         ),
       ],
+    );
+  }
+}
+
+/// Red error text shown above the submit button on form failures.
+class _FormErrorBanner extends StatelessWidget {
+  const _FormErrorBanner({required this.message});
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      message,
+      style: const TextStyle(
+        color: AppColors.redDark,
+        fontSize: 14,
+      ),
     );
   }
 }

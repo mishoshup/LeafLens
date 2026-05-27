@@ -2,6 +2,7 @@ import 'package:leaflens/core/network/api_client.dart';
 import 'package:leaflens/core/network/ws_client.dart';
 import 'package:leaflens/features/auth/data/auth_repository.dart';
 import 'package:leaflens/features/dashboard/domain/dashboard_update.dart';
+import 'package:leaflens/shared/auth/leaf_lens_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'dashboard_providers.g.dart';
@@ -52,7 +53,6 @@ DashboardRepository dashboardRepository(Ref ref) {
 }
 
 /// Provides a live stream of [DashboardUpdate] events from the WebSocket.
-/// Returns an empty stream when the user is not authenticated.
 @riverpod
 Stream<DashboardUpdate> dashboardStream(Ref ref) {
   final repo = ref.read(dashboardRepositoryProvider);
@@ -64,14 +64,13 @@ Stream<DashboardUpdate> dashboardStream(Ref ref) {
   return repo.connect(token);
 }
 
-/// Persisted provider that attempts to restore the user's JWT from the
-/// secure keychain on app startup. Keeps the value alive across hot restarts.
+/// Watches Supabase auth state and syncs the API client token.
+/// Emits the current access token (null if not logged in).
 @Riverpod(keepAlive: true)
-Future<String?> authState(Ref ref) async {
-  final repo = ref.read(authRepositoryProvider);
-  final token = await repo.tryRestore();
-  if (token != null) {
+Stream<String?> authState(Ref ref) {
+  return LeafLensAuth.onAuthChange.map((data) {
+    final token = data.session?.accessToken;
     ref.read(apiClientProvider).token = token;
-  }
-  return token;
+    return token;
+  });
 }

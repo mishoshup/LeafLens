@@ -63,10 +63,10 @@ The ESP32 ships with base firmware broadcasting a BLE signal. No static IP, no h
 ESP32 ──MQTT──→ ThingsBoard ←──REST/WS──→ FastAPI ──REST/WS──→ Flutter
 ```
 
-Flutter never talks to ThingsBoard directly. All TB credentials stay on the FastAPI server. Flutter authenticates with FastAPI's own JWT.
+Flutter never talks to ThingsBoard directly. All TB credentials stay on the FastAPI server. Flutter authenticates via Supabase (user accounts) and FastAPI proxies ThingsBoard data using a tenant admin JWT.
 
 When Flutter requests data:
-1. FastAPI verifies Flutter JWT → extracts `user_id`
+1. FastAPI verifies the Supabase JWT → extracts `user_id`
 2. PostgreSQL lookup → gets `tb_device_id`
 3. FastAPI queries ThingsBoard using tenant admin JWT
 4. Returns data to Flutter
@@ -75,7 +75,8 @@ When Flutter requests data:
 |-------|-----------|------|
 | Hardware | 2× ESP32 + sensors + actuators | Data collection, actuation |
 | Cloud | ThingsBoard | Telemetry storage, device management, alarms, RPC |
-| Backend | FastAPI + PostgreSQL | User auth, device mapping, GHS computation, TB proxy |
+| Auth | Supabase | User accounts, sessions, JWT issuance |
+| Backend | FastAPI + PostgreSQL | Device mapping, GHS computation, TB proxy |
 | Mobile | Flutter | Dashboard UI, offline mode, BLE provisioning |
 
 ---
@@ -84,18 +85,17 @@ When Flutter requests data:
 
 | What | Where | Why |
 |------|-------|-----|
-| User accounts | PostgreSQL | FastAPI issues JWT on login/register |
-| User ↔ device mapping | PostgreSQL | FastAPI knows which TB device belongs to which user |
+| User accounts | Supabase (PostgreSQL) | Supabase handles registration, login, JWT issuance, session refresh |
+| User ↔ device mapping | PostgreSQL (FastAPI) | FastAPI knows which TB device belongs to which user |
 | Telemetry (soil, temp, humidity, water level) | ThingsBoard | Time-series storage, MQTT ingestion, alarm rules |
 | Device config (thresholds, actuator state) | ThingsBoard shared attributes | RPC commands, no extra DB needed |
 | Alarms (low water, critical health) | ThingsBoard rule engine | Built-in, no alarm logic to write |
 | Growth Health Score | FastAPI (Python) | Reads telemetry from TB API, computes, returns to Flutter |
 
 FastAPI + PostgreSQL is minimal on purpose:
-- User registration/login
-- Token management
+- Device registration and mapping
+- TB proxy (Flutter asks FastAPI → FastAPI asks ThingsBoard)
 - GHS computation (reads from ThingsBoard API)
-- Proxy: Flutter asks FastAPI → FastAPI asks ThingsBoard
 
 Sensor data is never stored in PostgreSQL. Alarm logic is never written in Python. ThingsBoard handles all IoT plumbing.
 
@@ -177,11 +177,29 @@ At higher load: multiple FastAPI instances behind a gateway, one ThingsBoard Web
 
 ## Authentication
 
+Flutter uses **Supabase** for user authentication. Supabase handles registration, login, session persistence, and token refresh. The rest of the app never imports the Supabase SDK directly — `LeafLensAuth` wraps it.
+
 | Layer | Who | Token | Flows |
 |-------|-----|-------|-------|
-| App user | Flutter → FastAPI | FastAPI RS256 JWT | register / login / logout |
+| App user | Flutter → Supabase | Supabase JWT (auto-refreshed) | register / login / logout |
+| FastAPI proxy | Flutter → FastAPI → ThingsBoard | Supabase JWT (verified server-side) | Data fetch, RPC commands |
 | ThingsBoard | FastAPI → ThingsBoard | TB tenant admin JWT | Proxy calls, never leaves server |
 | ESP32 | ESP32 → ThingsBoard | TB device access token | MQTT only, provisioned once |
+
+### LeafLensAuth (Supabase wrapper)
+
+**File:** `lib/shared/auth/leaf_lens_auth.dart`
+
+Wraps `supabase_flutter` so no other file imports it directly. All methods are static.
+
+```
+LeafLensAuth.init(url, anonKey)          // Called once from main.dart
+LeafLensAuth.signInWithPassword(...)     // Returns access token
+LeafLensAuth.signUp(...)                 // Returns access token (or null if email confirmation required)
+LeafLensAuth.signOut()                   // Clears session
+LeafLensAuth.onAuthChange               // Stream<AuthState> — emits on login, logout, token refresh
+LeafLensAuth.accessToken                // Current token, or null
+```
 
 ### GoRouter Auth Guard
 
@@ -199,10 +217,20 @@ redirect: (context, state) {
 
 ### Session Lifecycle
 
-1. Login → `AuthRepository.login()` → FastAPI returns JWT → saved to `FlutterKeychain`
-2. `authStateProvider` invalidated → GoRouter detects auth → redirects to `/dashboard`
-3. App restart → `authStateProvider.tryRestore()` → reads stored JWT from keychain
-4. Logout → token cleared from keychain → `authStateProvider` → redirects to `/login`
+1. Login → `AuthRepository.login()` → calls `LeafLensAuth.signInWithPassword()` → Supabase returns JWT → token set on `ApiClient`
+2. `authStateProvider` (StreamProvider) emits new token → GoRouter detects auth → redirects to `/dashboard`
+3. App restart → Supabase restores session from its internal storage → `authStateProvider` emits current token automatically
+4. Logout → `LeafLensAuth.signOut()` → stream emits null → GoRouter redirects to `/login`
+
+### Build-time Configuration
+
+Supabase credentials are passed via `--dart-define`:
+
+```
+flutter run --dart-define=SUPABASE_URL=https://xxx.supabase.co --dart-define=SUPABASE_ANON_KEY=eyJ...
+```
+
+Without these, Supabase init is skipped and auth will not work. Same for `SENTRY_DSN`.
 
 ---
 

@@ -1,59 +1,48 @@
-import 'package:flutter_keychain/flutter_keychain.dart';
+import 'package:leaflens/core/errors/failures.dart';
 import 'package:leaflens/core/network/api_client.dart';
-import 'package:leaflens/features/auth/data/login_response.dart';
+import 'package:leaflens/shared/auth/leaf_lens_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'auth_repository.g.dart';
 
-/// Repository for LeafLens user auth against FastAPI backend.
+/// Repository for LeafLens user auth through LeafLensAuth.
+///
+/// The rest of the app calls this, not LeafLensAuth directly.
 class AuthRepository {
   /// Creates an [AuthRepository] backed by the given [ApiClient].
   AuthRepository(this._api);
   final ApiClient _api;
-  static const _tokenKey = 'user_jwt';
 
-  /// Try restoring a saved session from the secure keychain.
-  Future<String?> tryRestore() async {
+  /// Login with email/password.
+  /// Throws [InvalidCredentialsFailure] on wrong credentials.
+  Future<void> login(String email, String password) async {
     try {
-      return await FlutterKeychain.get(key: _tokenKey);
-    } on Exception catch (_) {
-      return null;
+      final token = await LeafLensAuth.signInWithPassword(
+        email: email,
+        password: password,
+      );
+      _api.token = token;
+    } on Exception {
+      throw const InvalidCredentialsFailure();
     }
   }
 
-  /// Login with email/password. Returns JWT on success.
-  Future<String> login(String email, String password) async {
-    final response = await _api.postPublic(
-      '/api/auth/login',
-      body: {
-        'email': email,
-        'password': password,
-      },
-    );
-    final loginResponse = LoginResponse.fromJson(response);
-    await FlutterKeychain.put(key: _tokenKey, value: loginResponse.token);
-    _api.token = loginResponse.token;
-    return loginResponse.token;
+  /// Register a new account.
+  Future<void> register(String email, String password) async {
+    try {
+      final token = await LeafLensAuth.signUp(
+        email: email,
+        password: password,
+      );
+      _api.token = token;
+    } on Exception {
+      throw const InvalidCredentialsFailure();
+    }
   }
 
-  /// Register a new account. Returns JWT on success.
-  Future<String> register(String email, String password) async {
-    final response = await _api.postPublic(
-      '/api/auth/register',
-      body: {
-        'email': email,
-        'password': password,
-      },
-    );
-    final loginResponse = LoginResponse.fromJson(response);
-    await FlutterKeychain.put(key: _tokenKey, value: loginResponse.token);
-    _api.token = loginResponse.token;
-    return loginResponse.token;
-  }
-
-  /// Clear stored session (logout).
+  /// Logout — clears the Supabase session and API token.
   Future<void> logout() async {
-    await FlutterKeychain.remove(key: _tokenKey);
+    await LeafLensAuth.signOut();
     _api.token = null;
   }
 }

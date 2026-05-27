@@ -60,12 +60,14 @@ Steady State
 | **Provisioning** | BLE (ESP32 firmware) | One-click Wi-Fi setup, no IP/port typing |
 | **Hardware** | 2× ESP32, soil moisture, DHT, ultrasonic, pump, mist maker, solenoid valve | Sensor data collection + actuation |
 | **Cloud** | ThingsBoard IoT Platform (global/public) | Telemetry storage, device management, alarms, RPC |
-| **Backend** | FastAPI (Python) | Device registration, user auth (JWT), GHS computation, ThingsBoard proxy |
+| **Backend** | FastAPI (Python) | Device registration, GHS computation, ThingsBoard proxy |
+| **Auth** | Supabase | User accounts, sessions, JWT issuance |
 | **Mobile** | Flutter + Riverpod + GoRouter | Dashboard UI, charts, offline mode, BLE provisioning UI |
 
 **Flutter never talks to ThingsBoard directly.** The FastAPI backend sits as a
 gateway — all ThingsBoard credentials stay on the server. The Flutter app
-authenticates to FastAPI with a user JWT.
+authenticates via Supabase and FastAPI proxies ThingsBoard data using a tenant
+admin JWT.
 
 ---
 
@@ -76,6 +78,7 @@ Detailed docs for every aspect of the project in `docs/`:
 | Doc | Covers |
 |-----|--------|
 | [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) | BLE provisioning, steady-state data flow, auth layers, ESP32 hardware, ThingsBoard data model |
+| [`docs/ERROR_HANDLING.md`](docs/ERROR_HANDLING.md) | 3-tier notification system: toast overlays, inline errors, modal dialogs, Sentry logging, error metrics |
 | [`docs/PROJECT_STRUCTURE.md`](docs/PROJECT_STRUCTURE.md) | Directory layout, file responsibilities, codegen workflow |
 | [`docs/SCREENS_AND_NAVIGATION.md`](docs/SCREENS_AND_NAVIGATION.md) | All 4 routes, screen layouts, GoRouter auth redirect |
 | [`docs/WIDGET_LIBRARY.md`](docs/WIDGET_LIBRARY.md) | All 9 shared widgets with constructor props and states |
@@ -266,25 +269,24 @@ flutter test -v
 
 ```
 lib/
-  main.dart                           # Entry point: ProviderScope + LeafLensApp
-  app.dart                            # MaterialApp.router + GoRouter + DashboardScreen (placeholder)
+  main.dart                           # Entry point: Sentry + Supabase + NotificationService + ProviderScope
+  app.dart                            # MaterialApp.router + GoRouter + rootNavigatorKey + DashboardScreen (placeholder)
 
   core/
     config/
-      app_config.dart                 # API URL (from env), stale threshold, Hive box name
+      app_config.dart                 # API URL, Supabase config, stale threshold, Hive box name
     network/
       api_client.dart                 # HTTP client targeting FastAPI backend
       ws_client.dart                  # WebSocket client
     errors/
       failures.dart                   # Typed exception classes
+      error_handler.dart              # 3-tier: toast + Sentry + metrics
 
   features/
     auth/
       data/
         auth_repository.dart          # AuthRepository + @riverpod providers
         auth_repository.g.dart        # Generated code
-        login_response.dart           # JWT response model (@JsonSerializable)
-        login_response.g.dart         # Generated code
       domain/
         auth_state.dart               # Sealed class: AuthInitial, AuthLoading, AuthAuthenticated, AuthFailure
     dashboard/
@@ -307,6 +309,8 @@ lib/
       signup_page.dart                # ConsumerStatefulWidget — 4 fields + terms + Google stub
 
   shared/
+    auth/
+      leaf_lens_auth.dart              # Supabase auth wrapper (static API)
     widgets/
       app_text_field.dart             # Themed outlined input with floating label
       app_button.dart                 # 4 variants (primary/secondary/outline/text) + loading state
@@ -317,6 +321,10 @@ lib/
       status_badge.dart               # Colored chip — Optimal/Moderate/Caution/Danger/Critical
       sensor_error_boundary.dart      # Per-widget error boundary with retry
       offline_banner.dart             # Connectivity banner watching auth state
+    notifications/
+      notification_service.dart       # Toastification wrapper (success/error/warning/info)
+      leaf_lens_notification_overlay.dart  # ToastificationWrapper root widget
+      app_dialog.dart                 # Standardised modal dialog utility
 
   theme/
     app_colors.dart                   # All color tokens as static Color constants
@@ -475,7 +483,7 @@ testWidgets('renders label text', (tester) async {
 Widget buildTestApp() {
   return ProviderScope(
     overrides: [
-      authStateProvider.overrideWith((ref) async => null),
+      authStateProvider.overrideWith((ref) => Stream<String?>.value(null)),
     ],
     child: MaterialApp(
       home: Scaffold(

@@ -14,7 +14,8 @@ leaflens/
 │   │   │   ├── api_client.dart         # HTTP client → FastAPI
 │   │   │   └── ws_client.dart          # WebSocket client → FastAPI
 │   │   └── errors/
-│   │       └── failures.dart           # Typed exception classes
+│   │       ├── failures.dart           # Typed exception classes
+│   │       └── error_handler.dart      # 3-tier: toast + Sentry + metrics
 │   │
 │   ├── features/
 │   │   ├── auth/
@@ -57,6 +58,9 @@ leaflens/
 │   │       ├── status_badge.dart          # Colored chip
 │   │       ├── sensor_error_boundary.dart # Per-widget error handling
 │   │       └── offline_banner.dart        # Connectivity indicator
+│   │   └── notifications/
+│   │       ├── notification_service.dart  # Toastification wrapper
+│   │       └── app_dialog.dart            # Modal dialog utility
 │   │
 │   └── theme/
 │       ├── app_colors.dart              # All colour tokens
@@ -76,6 +80,7 @@ leaflens/
 │
 ├── docs/
 │   ├── ARCHITECTURE.md                  # System architecture
+│   ├── ERROR_HANDLING.md               # 3-tier notification system
 │   ├── PROJECT_STRUCTURE.md             # This file
 │   ├── SCREENS_AND_NAVIGATION.md        # Routes and screens
 │   ├── WIDGET_LIBRARY.md                # Shared widget reference
@@ -106,6 +111,8 @@ leaflens/
 | Domain logic | `lib/features/{name}/domain/` | `lib/features/dashboard/domain/growth_health_score.dart` |
 | Theme token | `lib/theme/` | `lib/theme/app_colors.dart` |
 | Network client | `lib/core/network/` | `lib/core/network/api_client.dart` |
+| Error handler | `lib/core/errors/` | `lib/core/errors/error_handler.dart` |
+| Notification/overlay | `lib/shared/notifications/` | `lib/shared/notifications/notification_service.dart` |
 | Test | `test/{unit,widgets}/{subdir}/` | `test/widgets/shared/app_button_test.dart` |
 
 ---

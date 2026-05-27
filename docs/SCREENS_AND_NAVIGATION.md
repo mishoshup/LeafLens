@@ -84,6 +84,7 @@ Scaffold(offWhite)
 | `_passwordCtrl` | `TextEditingController` | Password input |
 | `_obscurePassword` | `bool` | Password visibility toggle |
 | `_loading` | `bool` | Button spinner state |
+| `_formError` | `String?` | Inline error message (wrong credentials) |
 
 ### Flow
 
@@ -91,8 +92,9 @@ Scaffold(offWhite)
 2. Form validates (empty fields show errors)
 3. `AuthRepository.login(email, password)` called
 4. On success: `authStateProvider` invalidated → GoRouter redirects to `/dashboard`
-5. On failure: SnackBar with error message
-6. Button re-enabled in `finally` block (`mounted`-safe)
+5. On `InvalidCredentialsFailure`: inline red text above the button
+6. On other `Failure`: `ErrorHandler.handle()` → top-of-screen toast + Sentry + metrics
+7. Button re-enabled in `finally` block (`mounted`-safe)
 
 ---
 
@@ -125,10 +127,12 @@ Same pattern as LoginPage with:
 | `_nameCtrl` | `TextEditingController` | Full name |
 | `_phoneCtrl` | `TextEditingController` | Phone number |
 | `_agreeToTerms` | `bool` | Terms checkbox |
+| `_formError` | `String?` | Inline error message (duplicate email) |
+| `_termsError` | `String?` | Inline error below checkbox (terms not accepted) |
 
 ### Flow
 
-Same as login but calls `AuthRepository.register()` instead. Terms checkbox must be checked before submission.
+Same as login but calls `AuthRepository.register()` instead. Terms checkbox must be checked before submission — shows inline red text below the checkbox if skipped.
 
 ---
 

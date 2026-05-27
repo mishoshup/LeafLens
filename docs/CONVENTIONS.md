@@ -37,7 +37,7 @@ Excluded directories prevent dartls from indexing 4GB+ of build artifacts.
 |---------|------------------|
 | `dart analyze` | Lint analysis (200+ rules) |
 | `dart fix --apply` | Auto-fix what the fix engine can |
-| `dart format .` | Format all Dart files |
+| `dart format lib/ test/` | Format only project source (excludes build/ deps) |
 
 ### Key Rules Enforced
 
@@ -120,21 +120,33 @@ Rules:
 
 ### Private widget decomposition
 
-Extract by rebuild boundary, not by line count.
+**Every widget with a `build()` method that renders multiple elements must decompose
+into private `_WidgetName` sub-widgets.** No inline `children:` lists with raw `Text`,
+`Icon`, or `Container` directly in the build method.
 
 ```dart
-class _EmailField extends StatelessWidget {
-  final TextEditingController controller;
-  const _EmailField({required this.controller});
+// GOOD — extracted
+@override
+Widget build(BuildContext context) {
+  return Column(
+    children: [
+      _Header(),
+      _EmailField(controller: _emailCtrl),
+      _LoginButton(loading: _loading, onPressed: _handleLogin),
+    ],
+  );
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return AppTextField(
-      hint: 'Email',
-      controller: controller,
-      keyboardType: TextInputType.emailAddress,
-    );
-  }
+// BAD — inline
+@override
+Widget build(BuildContext context) {
+  return Column(
+    children: [
+      Text('Login', style: ...),         // ← should be _Header
+      AppTextField(hint: 'Email', ...),  // ← should be _EmailField
+      FilledButton(onPressed: ...),      // ← should be _LoginButton
+    ],
+  );
 }
 ```
 
@@ -142,6 +154,8 @@ Rules:
 - `const` constructors everywhere — every `const _Widget()` skips instantiation
 - Pass only what each widget needs as constructor params
 - Extract to `lib/shared/widgets/` at first cross-screen use
+- Private widgets go at the bottom of the file under `//\n// Private widgets\n//` section dividers
+- Static helper methods (pure mapping functions) go inside the parent class, not top-level
 
 ### Form layout pattern
 
@@ -206,22 +220,35 @@ AuthRepository authRepository(Ref ref) {
 
 ## Error Handling
 
-### Stubs
+### Failures
 
-```dart
-// GOOD — crashes fast, visible in testing
-onPressed: () => throw UnimplementedError('Google sign-in'),
+All API errors are typed via the sealed `Failure` hierarchy in `failures.dart`:
 
-// BAD — silent no-op, passes review
-onPressed: () {},
+| Failure | When | User sees |
+|---------|------|-----------|
+| `InvalidCredentialsFailure` | Wrong email/password | Inline red text above the form button |
+| `SessionExpiredFailure` | JWT expired | Nothing — GoRouter redirects to login |
+| `ApiFailure(statusCode: 5xx)` | Server error | Top-of-screen toast via `NotificationService` |
+| `NetworkFailure` | No internet | Top-of-screen toast via `NotificationService` |
+| `UnknownFailure` | Unexpected exception | Top-of-screen toast via `NotificationService` |
+
+### Decision rule
+
 ```
+Form submission error (wrong password, duplicate email)
+  → catch specific Failure → setState inline error text below the field
+  Do NOT show a SnackBar or dialog.
 
-### User-visible errors
+Operation feedback (RPC command, settings save)
+  → NotificationService.success() or .error() — top-of-screen toast
+  Screen doesn't catch the error — ErrorHandler.handle() does it.
 
-```dart
-ScaffoldMessenger.of(context).showSnackBar(
-  SnackBar(content: Text(e.toString()), backgroundColor: cs.error),
-);
+Unexpected error (server down, network lost)
+  → ErrorHandler.handle(failure) — shows toast, logs to Sentry, counts metrics
+  Called automatically by ApiClient._handle() and screen catch blocks.
+
+Blocking/critical (session expired, account disabled)
+  → showAppDialog() — themed modal dialog, user must acknowledge
 ```
 
 ### Async safety
@@ -231,6 +258,16 @@ if (mounted) setState(() => _loading = false);
 ```
 
 Always check `mounted` after async gaps before `setState` or navigation.
+
+### Stubs
+
+```dart
+// GOOD — crashes fast, visible in testing
+onPressed: () => throw UnimplementedError('Google sign-in'),
+
+// BAD — silent no-op, passes review
+onPressed: () {},
+```
 
 ---
 
@@ -249,7 +286,7 @@ Always check `mounted` after async gaps before `setState` or navigation.
 # Before committing
 dart analyze                    # very_good_analysis, 200+ rules
 dart fix --apply                # auto-fix what the fix engine can
-dart format .                   # format all Dart files
+dart format lib/ test/               # format only project source
 dart run build_runner build     # if annotations changed
 flutter test
 

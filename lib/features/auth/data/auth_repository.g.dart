@@ -8,13 +8,17 @@ part of 'auth_repository.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
+/// Provides a singleton [ApiClient] instance.
 
 @ProviderFor(apiClient)
 final apiClientProvider = ApiClientProvider._();
 
+/// Provides a singleton [ApiClient] instance.
+
 final class ApiClientProvider
     extends $FunctionalProvider<ApiClient, ApiClient, ApiClient>
     with $Provider<ApiClient> {
+  /// Provides a singleton [ApiClient] instance.
   ApiClientProvider._()
     : super(
         from: null,
@@ -50,12 +54,17 @@ final class ApiClientProvider
 
 String _$apiClientHash() => r'61d47ad220d8fd27b1a1258e8d30e08859d61652';
 
+/// Provides the [AuthRepository] used for login/signup/logout operations.
+
 @ProviderFor(authRepository)
 final authRepositoryProvider = AuthRepositoryProvider._();
+
+/// Provides the [AuthRepository] used for login/signup/logout operations.
 
 final class AuthRepositoryProvider
     extends $FunctionalProvider<AuthRepository, AuthRepository, AuthRepository>
     with $Provider<AuthRepository> {
+  /// Provides the [AuthRepository] used for login/signup/logout operations.
   AuthRepositoryProvider._()
     : super(
         from: null,

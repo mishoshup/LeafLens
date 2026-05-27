@@ -173,7 +173,7 @@ class AuthFailure extends AuthState {
 }
 ```
 
-Used by `authStateProvider` (`FutureProvider<String?>`) — when token is non-null, user is authenticated. The sealed class is currently defined but the provider uses `String?` directly for simplicity. Future iterations may migrate to the sealed class.
+Used by `authStateProvider` (`StreamProvider<String?>`) — watches Supabase auth state changes and emits the current access token (null if not logged in). The sealed class is currently defined but the provider uses `String?` directly for simplicity. Future iterations may migrate to the sealed class.
 
 ---
 

@@ -8,7 +8,7 @@ import 'package:leaflens/shared/widgets/offline_banner.dart';
 Widget buildTestAppWithAuth(String? token) {
   return ProviderScope(
     overrides: [
-      authStateProvider.overrideWith((ref) async => token),
+      authStateProvider.overrideWith((ref) => Stream<String?>.value(token)),
     ],
     child: const MaterialApp(home: Scaffold(body: OfflineBanner())),
   );

@@ -5,6 +5,7 @@ import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
 import 'package:leaflens/screens/login/login_page.dart';
 import 'package:leaflens/screens/signup/signup_page.dart';
 import 'package:leaflens/screens/splash/splash_screen.dart';
+import 'package:leaflens/shared/notifications/notification_service.dart';
 
 /// Placeholder dashboard screen shown after login.
 /// Will be replaced with the full dashboard implementation in a future build.
@@ -22,6 +23,11 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
+/// Root navigator key used by GoRouter and [NotificationService].
+///
+/// Must be initialised in main before NotificationService is used.
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 /// Provides the [GoRouter] instance for app navigation.
 /// Checks authentication state on every route transition and redirects
 /// unauthenticated users to /login and authenticated users away from /login.
@@ -29,6 +35,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   final auth = ref.watch(authStateProvider);
 
   return GoRouter(
+    navigatorKey: rootNavigatorKey,
     initialLocation: '/splash',
     redirect: (context, state) {
       final isLoggedIn = auth.value != null;
