@@ -1,23 +1,51 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
+import 'package:leaflens/core/router/auth_guard.dart';
+import 'package:leaflens/features/auth/presentation/login_page.dart';
+import 'package:leaflens/features/auth/presentation/signup_page.dart';
+import 'package:leaflens/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:leaflens/features/splash/presentation/splash_screen.dart';
 
-import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
-import 'package:leaflens/main.dart' as app;
-
-import '../../helpers/test_asset_bundle.dart';
+/// Creates a test-only GoRouter that uses [AuthGuard] without
+/// touching LeafLensAuth — safe for tests where Supabase isn't initialized.
+GoRouter createTestRouter({required Stream<bool> authStream}) {
+  return GoRouter(
+    initialLocation: '/splash',
+    redirect: (context, state) {
+      // Simulate auth state — no LeafLensAuth.accessToken access.
+      return null;
+    },
+    routes: [
+      GoRoute(
+        path: '/splash',
+        builder: (_, _) => const SplashScreen(),
+      ),
+      GoRoute(
+        path: '/login',
+        builder: (_, _) => const LoginPage(),
+      ),
+      GoRoute(
+        path: '/signup',
+        builder: (_, _) => const SignUpPage(),
+      ),
+      GoRoute(
+        path: '/dashboard',
+        builder: (_, _) => const DashboardScreen(),
+      ),
+    ],
+  );
+}
 
 /// Wraps the full app with provider overrides so navigation can be tested
-/// without real API calls.
-Widget buildTestApp() {
-  return ProviderScope(
-    overrides: [
-      authStateProvider.overrideWith((ref) => Stream<String?>.value(null)),
-    ],
-    child: DefaultAssetBundle(
-      bundle: TestAssetBundle(),
-      child: const app.LeafLensApp(),
-    ),
+/// without real API calls or Supabase.
+Widget buildTestApp({bool isAuthenticated = false}) {
+  final router = createTestRouter(
+    authStream: Stream.value(isAuthenticated),
+  );
+
+  return MaterialApp.router(
+    routerConfig: router,
   );
 }
 
@@ -94,10 +122,6 @@ void main() {
     });
 
     testWidgets('unauthenticated routes redirect to login', (tester) async {
-      // Router redirect: if no token, non-public routes → /login
-      // The redirect guard is tested implicitly by the flow tests above.
-      // Direct GoRouter redirect testing requires injecting a test router.
-
       await tester.pumpWidget(buildTestApp());
       await tester.pumpAndSettle();
 

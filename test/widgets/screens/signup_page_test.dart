@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-
+import 'package:leaflens/features/auth/presentation/signup_page.dart';
 import 'package:leaflens/features/dashboard/data/dashboard_providers.dart';
-import 'package:leaflens/screens/signup/signup_page.dart';
 
 import '../../helpers/test_asset_bundle.dart';
 

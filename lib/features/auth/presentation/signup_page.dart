@@ -2,90 +2,108 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
-
 import 'package:leaflens/core/errors/error_handler.dart';
 import 'package:leaflens/core/errors/failures.dart';
+import 'package:leaflens/core/theme/app_colors.dart';
 import 'package:leaflens/features/auth/data/auth_repository.dart';
 import 'package:leaflens/shared/widgets/app_text_field.dart';
-import 'package:leaflens/theme/app_colors.dart';
 
-/// Per-screen extensions keep build() readable without
-/// global namespace pollution.
 extension on BuildContext {
   ColorScheme get colors => Theme.of(this).colorScheme;
   TextTheme get textTheme => Theme.of(this).textTheme;
 
-  TextStyle get loginTitleStyle => const TextStyle(
+  TextStyle get signUpTitleStyle => const TextStyle(
     fontWeight: FontWeight.w600,
-    fontSize: 46,
+    fontSize: 30,
     color: AppColors.deepGreen,
   );
 
   TextStyle get googleButtonStyle => const TextStyle(
     fontWeight: FontWeight.w600,
     fontSize: 16,
-    color: AppColors.white,
+    color: AppColors.offWhite,
   );
 
-  TextStyle get loginButtonStyle =>
-      const TextStyle(fontWeight: FontWeight.w600, fontSize: 20);
+  TextStyle get signUpButtonStyle =>
+      const TextStyle(fontWeight: FontWeight.w600, fontSize: 22);
 
-  TextStyle get signUpMuted => TextStyle(
+  TextStyle get termsMuted => const TextStyle(
+    fontWeight: FontWeight.w300,
+    fontSize: 16,
+    color: AppColors.offBlack,
+  );
+
+  TextStyle get termsLink => const TextStyle(
+    fontWeight: FontWeight.w400,
+    fontSize: 16,
+    color: AppColors.redDark,
+  );
+
+  TextStyle get loginMuted => TextStyle(
     fontWeight: FontWeight.w300,
     fontSize: 16,
     color: AppColors.offBlack.withValues(alpha: 0.6),
   );
 
-  TextStyle get signUpLink => const TextStyle(
+  TextStyle get loginLink => const TextStyle(
     fontWeight: FontWeight.w700,
     fontSize: 16,
     color: AppColors.mediumGreen,
   );
 }
 
-/// Login screen with email/password form and Google sign-in placeholder.
-class LoginPage extends ConsumerStatefulWidget {
-  /// Creates a [LoginPage] widget.
-  const LoginPage({super.key});
+/// Sign-up screen with full name, email, phone, password fields
+/// and terms-of-service acceptance.
+class SignUpPage extends ConsumerStatefulWidget {
+  /// Creates a [SignUpPage] widget.
+  const SignUpPage({super.key});
 
   @override
-  ConsumerState<LoginPage> createState() => _LoginPageState();
+  ConsumerState<SignUpPage> createState() => _SignUpPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> {
+class _SignUpPageState extends ConsumerState<SignUpPage> {
   final _formKey = GlobalKey<FormState>();
+  final _nameCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   bool _obscurePassword = true;
+  bool _agreeToTerms = false;
   bool _loading = false;
   String? _formError;
+  String? _termsError;
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
     _emailCtrl.dispose();
+    _phoneCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (!_agreeToTerms) {
+      setState(() => _termsError = 'Please accept the terms to continue.');
+      return;
+    }
 
     setState(() {
       _loading = true;
       _formError = null;
+      _termsError = null;
     });
 
     try {
       final repo = ref.read(authRepositoryProvider);
-      await repo.login(_emailCtrl.text.trim(), _passwordCtrl.text);
+      await repo.register(_emailCtrl.text.trim(), _passwordCtrl.text);
       if (mounted) context.go('/dashboard');
-    } on InvalidCredentialsFailure {
-      // Inline: stay on form so user can retry immediately.
-      setState(
-        () => _formError = 'Invalid email or password. Please try again.',
-      );
+    } on AuthFailure catch (e) {
+      setState(() => _formError = e.message);
     } on Failure catch (e) {
-      // All other failures go through the central handler (toast + Sentry).
       ErrorHandler.handle(e);
     } on Exception catch (e) {
       ErrorHandler.handle(UnknownFailure(e.toString()));
@@ -107,10 +125,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Center(child: _LoginHeader()),
-                  const _GoogleSignInButton(),
+                  const Center(child: _SignUpHeader()),
+                  const _GoogleSignUpButton(),
                   const _OrDivider(),
+                  _NameField(controller: _nameCtrl),
+                  const SizedBox(height: 12),
                   _EmailField(controller: _emailCtrl),
+                  const SizedBox(height: 12),
+                  _PhoneField(controller: _phoneCtrl),
                   const SizedBox(height: 12),
                   _PasswordField(
                     controller: _passwordCtrl,
@@ -118,14 +140,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     onToggle: () =>
                         setState(() => _obscurePassword = !_obscurePassword),
                   ),
+                  const SizedBox(height: 20),
+                  _TermsCheckbox(
+                    agreed: _agreeToTerms,
+                    onChanged: (v) {
+                      setState(() {
+                        _agreeToTerms = v;
+                        _termsError = null;
+                      });
+                    },
+                    error: _termsError,
+                  ),
                   if (_formError != null) ...[
                     const SizedBox(height: 12),
                     _FormErrorBanner(message: _formError!),
                   ],
                   const SizedBox(height: 20),
-                  _LoginButton(loading: _loading, onPressed: _handleLogin),
-                  const SizedBox(height: 12),
-                  const _SignUpRow(),
+                  _SignUpButton(loading: _loading, onPressed: _handleSignUp),
+                  const SizedBox(height: 16),
+                  const _LoginRow(),
                 ],
               ),
             ),
@@ -140,24 +173,24 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 // Private widgets
 //
 
-class _LoginHeader extends StatelessWidget {
-  const _LoginHeader();
+class _SignUpHeader extends StatelessWidget {
+  const _SignUpHeader();
 
   @override
   Widget build(BuildContext context) {
-    return Text('Login', style: context.loginTitleStyle);
+    return Text('Sign up', style: context.signUpTitleStyle);
   }
 }
 
-class _GoogleSignInButton extends StatelessWidget {
-  const _GoogleSignInButton();
+class _GoogleSignUpButton extends StatelessWidget {
+  const _GoogleSignUpButton();
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 32),
       child: FilledButton.tonal(
-        onPressed: () => throw UnimplementedError('Google sign-in'),
+        onPressed: () => throw UnimplementedError('Google sign-up'),
         style: FilledButton.styleFrom(
           backgroundColor: AppColors.offBlack,
           foregroundColor: AppColors.white,
@@ -173,7 +206,7 @@ class _GoogleSignInButton extends StatelessWidget {
               height: 22,
             ),
             const SizedBox(width: 12),
-            Text('Log in with Google', style: context.googleButtonStyle),
+            Text('Sign up with Google', style: context.googleButtonStyle),
           ],
         ),
       ),
@@ -187,7 +220,7 @@ class _OrDivider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 32),
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Row(
         children: [
           Expanded(child: Divider(color: context.colors.outlineVariant)),
@@ -207,6 +240,20 @@ class _OrDivider extends StatelessWidget {
   }
 }
 
+class _NameField extends StatelessWidget {
+  const _NameField({required this.controller});
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      hint: 'Full Name',
+      controller: controller,
+      validator: (v) => (v == null || v.isEmpty) ? 'Enter your name' : null,
+    );
+  }
+}
+
 class _EmailField extends StatelessWidget {
   const _EmailField({required this.controller});
   final TextEditingController controller;
@@ -218,6 +265,22 @@ class _EmailField extends StatelessWidget {
       controller: controller,
       keyboardType: TextInputType.emailAddress,
       validator: (v) => (v == null || v.isEmpty) ? 'Enter your email' : null,
+    );
+  }
+}
+
+class _PhoneField extends StatelessWidget {
+  const _PhoneField({required this.controller});
+  final TextEditingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    return AppTextField(
+      hint: 'Phone Number',
+      controller: controller,
+      keyboardType: TextInputType.phone,
+      validator: (v) =>
+          (v == null || v.isEmpty) ? 'Enter your phone number' : null,
     );
   }
 }
@@ -249,8 +312,80 @@ class _PasswordField extends StatelessWidget {
   }
 }
 
-class _LoginButton extends StatelessWidget {
-  const _LoginButton({required this.loading, required this.onPressed});
+class _TermsCheckbox extends StatelessWidget {
+  const _TermsCheckbox({
+    required this.agreed,
+    required this.onChanged,
+    this.error,
+  });
+  final bool agreed;
+  final ValueChanged<bool> onChanged;
+  final String? error;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: Checkbox(
+                value: agreed,
+                onChanged: (v) => onChanged(v ?? false),
+                side: BorderSide(
+                  color: error != null
+                      ? AppColors.redDark
+                      : context.colors.outline,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: RichText(
+                text: TextSpan(
+                  style: context.termsMuted,
+                  children: [
+                    const TextSpan(text: 'I accept '),
+                    TextSpan(
+                      text: 'Terms of Service',
+                      style: context.termsLink,
+                    ),
+                    const TextSpan(text: ' and '),
+                    TextSpan(
+                      text: 'Privacy Policy',
+                      style: context.termsLink,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 34, top: 4),
+            child: Text(
+              error!,
+              style: const TextStyle(
+                color: AppColors.redDark,
+                fontSize: 12,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _SignUpButton extends StatelessWidget {
+  const _SignUpButton({required this.loading, required this.onPressed});
   final bool loading;
   final VoidCallback onPressed;
 
@@ -271,23 +406,23 @@ class _LoginButton extends StatelessWidget {
                 color: AppColors.offWhite,
               ),
             )
-          : Text('Login', style: context.loginButtonStyle),
+          : Text('Sign Up', style: context.signUpButtonStyle),
     );
   }
 }
 
-class _SignUpRow extends StatelessWidget {
-  const _SignUpRow();
+class _LoginRow extends StatelessWidget {
+  const _LoginRow();
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text("Don't have an account? ", style: context.signUpMuted),
+        Text('Already have an account? ', style: context.loginMuted),
         GestureDetector(
-          onTap: () => context.go('/signup'),
-          child: Text('Sign up', style: context.signUpLink),
+          onTap: () => context.go('/login'),
+          child: Text('Login', style: context.loginLink),
         ),
       ],
     );

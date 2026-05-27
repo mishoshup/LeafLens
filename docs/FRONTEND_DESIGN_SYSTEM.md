@@ -89,11 +89,30 @@ lib/
 │           ├── sensor_key.dart
 │           ├── sensor_reading.dart
 │           └── water_system_state.dart
-├── screens/
-│   ├── splash/splash_screen.dart
-│   ├── login/login_page.dart
-│   └── signup/signup_page.dart
-│   └── widgets/
+├── features/
+│   ├── auth/
+│   │   ├── data/
+│   │   │   ├── auth_repository.dart
+│   │   │   └── leaf_lens_auth.dart
+│   │   └── presentation/
+│   │       ├── login_page.dart
+│   │       └── signup_page.dart
+│   ├── dashboard/
+│   │   ├── data/
+│   │   │   └── dashboard_providers.dart
+│   │   ├── domain/
+│   │   │   ├── dashboard_update.dart
+│   │   │   ├── growth_health_score.dart    # GHS algorithm
+│   │   │   ├── sensor_key.dart
+│   │   │   ├── sensor_reading.dart
+│   │   │   └── water_system_state.dart
+│   │   └── presentation/
+│   │       └── dashboard_screen.dart
+│   └── splash/
+│       └── presentation/
+│           └── splash_screen.dart
+├── shared/
+│   ├── widgets/
 │       ├── app_text_field.dart
 │       ├── app_button.dart
 │       ├── background_ellipse.dart
@@ -120,7 +139,7 @@ Generated files (`.g.dart` and `.freezed.dart`) are committed to the repo.
 
 ### 3.1 Splash Screen
 
-**File:** `lib/screens/splash/splash_screen.dart`  
+**File:** `lib/features/splash/presentation/splash_screen.dart`  
 **Route:** `/splash`  
 **State:** `StatelessWidget`
 
@@ -134,7 +153,7 @@ Generated files (`.g.dart` and `.freezed.dart`) are committed to the repo.
 
 ### 3.2 Login Page
 
-**File:** `lib/screens/login/login_page.dart`  
+**File:** `lib/features/auth/presentation/login_page.dart`  
 **Route:** `/login`  
 **State:** `ConsumerStatefulWidget`
 

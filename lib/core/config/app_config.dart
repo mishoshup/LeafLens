@@ -1,24 +1,32 @@
 /// Application-wide configuration values.
+///
+/// All secrets are injected at build time via `--dart-define-from-file`.
+/// Never hardcode API keys or URLs here — use `.env` locally and CI
+/// environment variables in production.
+///
+/// ## Setup
+///
+/// Copy `.env.example` to `.env` and fill in your values:
+/// ```bash
+/// cp .env.example .env
+/// ```
+///
+/// Pass to Flutter:
+/// ```bash
+/// flutter run --dart-define-from-file=.env
+/// flutter build apk --dart-define-from-file=.env
+/// ```
 class AppConfig {
   AppConfig._();
 
   /// FastAPI backend base URL (no trailing slash).
-  static const String apiUrl = String.fromEnvironment(
-    'API_URL',
-    defaultValue: 'http://localhost:8000',
-  );
+  static const String apiUrl = String.fromEnvironment('API_URL');
 
   /// FastAPI WebSocket URL.
-  static const String wsUrl = String.fromEnvironment(
-    'WS_URL',
-    defaultValue: 'ws://localhost:8000/ws',
-  );
+  static const String wsUrl = String.fromEnvironment('WS_URL');
 
   /// Supabase project URL.
-  static const String supabaseUrl = String.fromEnvironment(
-    'SUPABASE_URL',
-    defaultValue: 'http://localhost:54321',
-  );
+  static const String supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 
   /// Supabase anon/public key.
   static const String supabaseAnonKey = String.fromEnvironment(

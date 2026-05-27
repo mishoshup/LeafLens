@@ -72,8 +72,8 @@ class ApiClient {
   Map<String, dynamic> _handle(http.Response response) {
     if (response.statusCode == 401) {
       if (token == null) {
-        // No session — this is a login/register rejection, not expiry.
-        throw const InvalidCredentialsFailure();
+        // No session — request rejected by backend.
+        throw const AuthFailure('Session expired. Please log in again.');
       }
       token = null;
       ErrorHandler.handleSilent(const SessionExpiredFailure());

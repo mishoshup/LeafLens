@@ -5,6 +5,45 @@
 
 ---
 
+## Flutter Architecture (MVVM)
+
+LeafLens follows Google's recommended [MVVM architecture pattern](https://docs.flutter.dev/app-architecture/guide). The app is organized into feature modules with a clear separation of concerns: **Views** (Flutter widgets) → **ViewModels** (Riverpod providers) → **Repositories** → **Services**. The domain layer is omitted for LeafLens's scope — domain logic lives directly in providers.
+
+### Directory Structure
+
+```
+lib/
+├── main.dart                              # Entry point only
+├── app.dart                               # LeafLensApp widget only
+├── core/
+│   ├── config/app_config.dart
+│   ├── errors/failures.dart, error_handler.dart
+│   ├── init/sentry_init.dart, leaf_lens_auth_init.dart
+│   ├── network/api_client.dart, ws_client.dart
+│   ├── router/app_router.dart, auth_guard.dart
+│   └── theme/app_theme.dart, app_colors.dart, app_typography.dart
+├── features/
+│   ├── auth/
+│   │   ├── data/auth_repository.dart, leaf_lens_auth.dart
+│   │   └── presentation/login_page.dart, signup_page.dart
+│   ├── dashboard/
+│   │   ├── data/dashboard_providers.dart
+│   │   ├── domain/dashboard_update.dart, growth_health_score.dart, sensor_key.dart, sensor_reading.dart, water_system_state.dart
+│   │   └── presentation/dashboard_screen.dart
+│   └── splash/presentation/splash_screen.dart
+└── shared/
+    ├── widgets/app_text_field.dart, app_button.dart, background_ellipse.dart, leaf_lens_logo.dart, health_gauge.dart, sensor_tile.dart, status_badge.dart, sensor_error_boundary.dart, offline_banner.dart
+    └── notifications/notification_service.dart, leaf_lens_notification_overlay.dart, leaf_lens_toast.dart, app_dialog.dart
+```
+
+### Key Principles
+
+- **Feature-first organization:** Each feature (`auth`, `dashboard`, `splash`) contains its own `data/`, `domain/`, and `presentation/` layers.
+- **Core is shared infrastructure:** `core/` holds config, error handling, networking, routing, and theming used across all features.
+- **Shared is reusable UI:** `shared/` contains widgets and notification utilities that multiple features depend on.
+- **main.dart is minimal:** Only bootstraps the app. `app.dart` owns the `LeafLensApp` widget. Feature screens live in `features/*/presentation/`.
+- **Screens folder eliminated:** No top-level `screens/` directory. Each screen belongs to its feature module.
+
 ## Device Provisioning (BLE Onboarding)
 
 The ESP32 ships with base firmware broadcasting a BLE signal. No static IP, no hardcoded Wi-Fi. The user never sees a ThingsBoard token, Docker port, or admin credential — FastAPI handles all of that server-side.
@@ -188,7 +227,7 @@ Flutter uses **Supabase** for user authentication. Supabase handles registration
 
 ### LeafLensAuth (Supabase wrapper)
 
-**File:** `lib/shared/auth/leaf_lens_auth.dart`
+**File:** `lib/features/auth/data/leaf_lens_auth.dart`
 
 Wraps `supabase_flutter` so no other file imports it directly. All methods are static.
 
@@ -203,16 +242,33 @@ LeafLensAuth.accessToken                // Current token, or null
 
 ### GoRouter Auth Guard
 
-```dart
-redirect: (context, state) {
-  final isLoggedIn = auth.value != null;
-  final path = state.matchedLocation;
+The auth guard is encapsulated in `lib/core/router/auth_guard.dart` and consumed by `AppRouter` (`lib/core/router/app_router.dart`). `AppRouter` is a class that owns the `GoRouter` instance:
 
-  if (path == '/splash') return null;
-  if (!isLoggedIn && path != '/login' && path != '/signup') return '/login';
-  if (isLoggedIn && (path == '/login' || path == '/signup')) return '/dashboard';
-  return null;
+```dart
+// lib/core/router/app_router.dart
+class AppRouter {
+  final Ref _ref;
+  AppRouter(this._ref);
+
+  GoRouter get router => GoRouter(
+        initialLocation: '/splash',
+        routes: [/* route definitions */],
+        redirect: (context, state) => _ref.read(authGuardProvider)(context, state),
+      );
 }
+
+// lib/core/router/auth_guard.dart
+final authGuardProvider = Provider<GoRouterRedirect>((ref) {
+  final auth = ref.watch(authStateProvider);
+  return (context, state) {
+    final isLoggedIn = auth.value != null;
+    final path = state.matchedLocation;
+    if (path == '/splash') return null;
+    if (!isLoggedIn && path != '/login' && path != '/signup') return '/login';
+    if (isLoggedIn && (path == '/login' || path == '/signup')) return '/dashboard';
+    return null;
+  };
+});
 ```
 
 ### Session Lifecycle
@@ -224,13 +280,19 @@ redirect: (context, state) {
 
 ### Build-time Configuration
 
-Supabase credentials are passed via `--dart-define`:
+Supabase credentials are injected at build time via
+`--dart-define-from-file`. Copy `.env.example` to `.env` and fill in
+your values:
 
-```
-flutter run --dart-define=SUPABASE_URL=https://xxx.supabase.co --dart-define=SUPABASE_ANON_KEY=eyJ...
+```bash
+cp .env.example .env
+flutter run --dart-define-from-file=.env
+flutter build apk --dart-define-from-file=.env
 ```
 
-Without these, Supabase init is skipped and auth will not work. Same for `SENTRY_DSN`.
+All four values (`API_URL`, `WS_URL`, `SUPABASE_URL`,
+`SUPABASE_ANON_KEY`) are required — the app won't compile without
+them. Same for `SENTRY_DSN` (optional).
 
 ---
 

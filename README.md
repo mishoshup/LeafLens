@@ -62,7 +62,7 @@ Steady State
 | **Cloud** | ThingsBoard IoT Platform (global/public) | Telemetry storage, device management, alarms, RPC |
 | **Backend** | FastAPI (Python) | Device registration, GHS computation, ThingsBoard proxy |
 | **Auth** | Supabase | User accounts, sessions, JWT issuance |
-| **Mobile** | Flutter + Riverpod + GoRouter | Dashboard UI, charts, offline mode, BLE provisioning UI |
+| **Mobile** | Flutter + Riverpod (MVVM) + GoRouter | Dashboard UI, charts, offline mode, BLE provisioning UI |
 
 **Flutter never talks to ThingsBoard directly.** The FastAPI backend sits as a
 gateway — all ThingsBoard credentials stay on the server. The Flutter app
@@ -269,67 +269,70 @@ flutter test -v
 
 ```
 lib/
-  main.dart                           # Entry point: Sentry + Supabase + NotificationService + ProviderScope
-  app.dart                            # MaterialApp.router + GoRouter + rootNavigatorKey + DashboardScreen (placeholder)
+  main.dart                           # Entry point only: void main(), init calls, runApp()
+  app.dart                            # LeafLensApp widget: theme + router + notification overlay
 
   core/
     config/
       app_config.dart                 # API URL, Supabase config, stale threshold, Hive box name
-    network/
-      api_client.dart                 # HTTP client targeting FastAPI backend
-      ws_client.dart                  # WebSocket client
     errors/
-      failures.dart                   # Typed exception classes
+      failures.dart                   # Typed exception classes (AuthFailure, NetworkFailure, etc.)
       error_handler.dart              # 3-tier: toast + Sentry + metrics
+    init/
+      sentry_init.dart                # initSentry() — Sentry error tracking setup
+      leaf_lens_auth_init.dart        # initLeafLensAuth() — Supabase client setup
+    network/
+      api_client.dart                 # HTTP client → FastAPI
+      ws_client.dart                  # WebSocket client → FastAPI
+    router/
+      app_router.dart                 # AppRouter class — GoRouter config + routes
+      auth_guard.dart                 # AuthGuard — pure function for auth redirect
+    theme/
+      app_colors.dart                 # All colour tokens
+      app_typography.dart             # Typography tokens (Lexend weights)
+      app_theme.dart                  # Material3 ThemeData
 
   features/
     auth/
       data/
         auth_repository.dart          # AuthRepository + @riverpod providers
-        auth_repository.g.dart        # Generated code
-      domain/
-        auth_state.dart               # Sealed class: AuthInitial, AuthLoading, AuthAuthenticated, AuthFailure
+        auth_repository.g.dart        # Generated
+        leaf_lens_auth.dart           # Service: Supabase auth wrapper (static API)
+      presentation/
+        login_page.dart               # View: Form + email/password + Google stub
+        signup_page.dart              # View: 4 fields + terms + Google stub
     dashboard/
       data/
-        dashboard_providers.dart      # DashRepo + @riverpod providers (stream, state)
-        dashboard_providers.g.dart    # Generated code
+        dashboard_providers.dart      # ViewModel: @riverpod providers (stream, state)
+        dashboard_providers.g.dart    # Generated
       domain/
-        dashboard_update.dart         # @freezed sealed union for WS payloads
-        growth_health_score.dart      # GHS algorithm (pure domain logic, zero Flutter imports)
+        dashboard_update.dart         # @freezed sealed union (WS payloads)
+        growth_health_score.dart      # GHS algorithm (pure domain logic)
         sensor_key.dart               # Enum: soilMoisture, temperature, humidity, waterLevel
         sensor_reading.dart           # Data model with staleness tracking
         water_system_state.dart       # Pump/mist/refill status
-
-  screens/
+      presentation/
+        dashboard_screen.dart         # View: placeholder dashboard
     splash/
-      splash_screen.dart              # StatelessWidget — decorative SVG + "Get Started" CTA
-    login/
-      login_page.dart                 # ConsumerStatefulWidget — Form + email/password + Google stub
-    signup/
-      signup_page.dart                # ConsumerStatefulWidget — 4 fields + terms + Google stub
+      presentation/
+        splash_screen.dart            # View: decorative SVG + "Get Started" CTA
 
   shared/
-    auth/
-      leaf_lens_auth.dart              # Supabase auth wrapper (static API)
     widgets/
-      app_text_field.dart             # Themed outlined input with floating label
-      app_button.dart                 # 4 variants (primary/secondary/outline/text) + loading state
-      background_ellipse.dart         # Configurable decorative SVG (align + fraction)
-      leaf_lens_logo.dart             # Brand leaf illustration SVG
-      health_gauge.dart               # Circular gauge (CustomPaint) — green→yellow→red arc
-      sensor_tile.dart                # Sensor value display + skeleton + stale indicator
-      status_badge.dart               # Colored chip — Optimal/Moderate/Caution/Danger/Critical
-      sensor_error_boundary.dart      # Per-widget error boundary with retry
-      offline_banner.dart             # Connectivity banner watching auth state
+      app_text_field.dart             # Themed outlined input
+      app_button.dart                 # 4 variants + loading
+      background_ellipse.dart         # Configurable decorative SVG
+      leaf_lens_logo.dart             # Brand leaf SVG
+      health_gauge.dart               # Circular gauge (CustomPaint)
+      sensor_tile.dart                # Sensor value + skeleton + stale
+      status_badge.dart               # Colored chip
+      sensor_error_boundary.dart      # Per-widget error boundary
+      offline_banner.dart             # Connectivity banner
     notifications/
-      notification_service.dart       # Toastification wrapper (success/error/warning/info)
+      notification_service.dart       # Toastification wrapper
       leaf_lens_notification_overlay.dart  # ToastificationWrapper root widget
-      app_dialog.dart                 # Standardised modal dialog utility
-
-  theme/
-    app_colors.dart                   # All color tokens as static Color constants
-    app_theme.dart                    # Material3 ThemeData with ColorScheme.fromSeed
-    app_typography.dart               # Typography tokens (displayLarge → bodySmall)
+      leaf_lens_toast.dart            # Custom branded toast
+      app_dialog.dart                 # Modal dialog utility
 
 test/
   unit/

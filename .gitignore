@@ -57,3 +57,6 @@ node_modules/
 
 # Local dev tools (not part of project)
 /tools/
+
+# Environment
+.env

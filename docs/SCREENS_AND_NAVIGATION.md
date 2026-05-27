@@ -17,7 +17,7 @@
 
 ## SplashScreen
 
-**File:** `lib/screens/splash/splash_screen.dart`
+**File:** `lib/features/splash/presentation/splash_screen.dart`
 
 The first screen users see. Purely decorative — no auth logic, no state.
 
@@ -50,7 +50,7 @@ Scaffold(lightGreenBg)
 
 ## LoginPage
 
-**File:** `lib/screens/login/login_page.dart`
+**File:** `lib/features/auth/presentation/login_page.dart`
 
 Email/password authentication form. Talks to FastAPI through `AuthRepository`.
 
@@ -100,7 +100,7 @@ Scaffold(offWhite)
 
 ## SignUpPage
 
-**File:** `lib/screens/signup/signup_page.dart`
+**File:** `lib/features/auth/presentation/signup_page.dart`
 
 Registration form with name, email, phone, password, and terms acceptance.
 

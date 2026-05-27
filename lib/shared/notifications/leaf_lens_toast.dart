@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:leaflens/theme/app_colors.dart';
+import 'package:leaflens/core/theme/app_colors.dart';
 import 'package:toastification/toastification.dart';
 
 /// LeafLens branded toast widget.

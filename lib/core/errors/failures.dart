@@ -28,10 +28,17 @@ class SessionExpiredFailure extends Failure {
   const SessionExpiredFailure();
 }
 
-/// Wrong email or password provided during login.
-class InvalidCredentialsFailure extends Failure {
-  /// Creates an [InvalidCredentialsFailure].
-  const InvalidCredentialsFailure();
+/// Supabase auth rejection (wrong credentials, weak password,
+/// rate limit, etc.).
+///
+/// Carries a user-friendly [message] mapped from Supabase's raw error.
+/// Both login and signup throw this — the UI shows [message] inline.
+class AuthFailure extends Failure {
+  /// Creates an [AuthFailure] with the given [message].
+  const AuthFailure(this.message);
+
+  /// The user-friendly error message.
+  final String message;
 }
 
 /// A non-Failure exception was caught and wrapped.

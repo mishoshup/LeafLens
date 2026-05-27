@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:leaflens/core/theme/app_colors.dart';
 import 'package:leaflens/shared/widgets/background_ellipse.dart';
 import 'package:leaflens/shared/widgets/leaf_lens_logo.dart';
-import 'package:leaflens/theme/app_colors.dart';
 
 /// Per-screen extensions keep build() readable without
 /// global namespace pollution.

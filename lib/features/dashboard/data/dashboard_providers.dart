@@ -1,8 +1,8 @@
 import 'package:leaflens/core/network/api_client.dart';
 import 'package:leaflens/core/network/ws_client.dart';
 import 'package:leaflens/features/auth/data/auth_repository.dart';
+import 'package:leaflens/features/auth/data/leaf_lens_auth.dart';
 import 'package:leaflens/features/dashboard/domain/dashboard_update.dart';
-import 'package:leaflens/shared/auth/leaf_lens_auth.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'dashboard_providers.g.dart';

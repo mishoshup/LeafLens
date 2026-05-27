@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:leaflens/screens/splash/splash_screen.dart';
+import 'package:leaflens/features/splash/presentation/splash_screen.dart';
 
 import '../../helpers/test_asset_bundle.dart';
 

@@ -113,8 +113,8 @@ class ErrorHandler {
         // GoRouter redirect handles the user experience.
         break;
 
-      case InvalidCredentialsFailure():
-        // Handled inline by the login/signup form.
+      case AuthFailure():
+        // Handled inline by login/signup forms.
         break;
 
       case UnknownFailure():
