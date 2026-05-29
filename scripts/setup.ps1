@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
     LeafLens — Project Setup Script (Windows)
 .DESCRIPTION
