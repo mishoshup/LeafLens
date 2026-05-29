@@ -102,7 +102,7 @@ function Install-Mise {
         return
     }
     Write-Info "Installing mise via Scoop..."
-    scoop install mise
+    scoop install mise *>$null
     if (-not (Get-Command mise -ErrorAction SilentlyContinue)) {
         Write-Error "mise installation failed."
         exit 1
@@ -128,9 +128,9 @@ function Install-MiseTools {
     param([string]$ProjectRoot)
     Set-Location $ProjectRoot
     Write-Info "Trusting mise config..."
-    mise trust 2>$null | Out-Null
+    mise trust *>$null
     Write-Info "Installing project toolchain via mise..."
-    mise install
+    mise install 2>&1 | ForEach-Object { Write-Host "  $_" }
     Write-Ok "mise tools installed"
 }
 
@@ -145,13 +145,13 @@ function Install-SdkExtras {
     'y' * 10 | sdkmanager --licenses *>$null
 
     foreach ($pkg in $SdkPackages) {
-        $installed = sdkmanager --list 2>$null
+        $installed = sdkmanager --list 2>&1
         if ($installed -match "^\s*$pkg\s+.*Installed") {
             Write-Ok "SDK package already installed: $pkg"
             continue
         }
         Write-Info "Installing SDK package: $pkg..."
-        sdkmanager $pkg
+        sdkmanager $pkg *>&1 | ForEach-Object { Write-Host "  $_" }
         Write-Ok "Installed: $pkg"
     }
 }
@@ -162,13 +162,13 @@ function Create-Avd {
         Write-Error "avdmanager not in PATH"
         exit 1
     }
-    $avdList = avdmanager list avd -c 2>$null
+    $avdList = avdmanager list avd -c 2>&1
     if ($avdList -match "^${AvdName}$") {
         Write-Ok "AVD '${AvdName}' already exists"
         return
     }
     Write-Info "Creating AVD '${AvdName}'..."
-    'no' | avdmanager create avd -n $AvdName -k $AvdTarget -d pixel_8 -f
+    'no' | avdmanager create avd -n $AvdName -k $AvdTarget -d pixel_8 -f *>&1 | ForEach-Object { Write-Host "  $_" }
     Write-Ok "AVD '${AvdName}' created"
 }
 
