@@ -34,15 +34,13 @@ case "$OS" in
 esac
 
 if [[ "$OS" != "Linux" && "$OS" != "Darwin" && "$IS_WINDOWS" != "true" ]]; then
-  log_error "Unsupported OS: $OS. Supported: Linux, macOS, Windows (Git Bash)."
+  log_error "Unsupported OS: $OS."
   exit 1
 fi
 
 # ── Mise data directory ────────────────────────────────────────────────────
-# Windows (Git Bash) uses LOCALAPPDATA; Unix uses ~/.local/share
 if [[ "$IS_WINDOWS" == "true" ]]; then
   DEFAULT_MISE_DATA="${LOCALAPPDATA}/mise"
-  # Convert backslashes to forward slashes for Git Bash
   DEFAULT_MISE_DATA="${DEFAULT_MISE_DATA//\\/\/}"
 else
   DEFAULT_MISE_DATA="$HOME/.local/share/mise"
@@ -122,7 +120,6 @@ install_mise() {
     curl -fsSL https://mise.run | sh
   fi
 
-  # Add mise to PATH for this script's execution
   for dir in "$MISE_DATA/bin" "$HOME/.local/bin"; do
     if [[ -x "$dir/mise" ]]; then
       export PATH="$dir:$PATH"
@@ -131,13 +128,11 @@ install_mise() {
   done
 
   if ! command -v mise &>/dev/null; then
-    log_error "mise installation failed. Add mise to PATH and re-run."
+    log_error "mise installation failed."
     exit 1
   fi
 
-  # Activate mise for this session so shims (sdkmanager, avdmanager) resolve
   eval "$(mise activate bash 2>/dev/null)" || true
-  # Ensure shims directory is on PATH even if activate fails
   if [[ -d "$MISE_DATA/shims" ]]; then
     export PATH="$MISE_DATA/shims:$PATH"
   fi
@@ -164,15 +159,68 @@ install_mise_tools() {
   cd "$1"
   mise trust 2>/dev/null || true
   log_info "Installing project toolchain via mise..."
-  mise install
-  log_ok "mise tools installed"
+  mise install || true  # Don't exit — some tools may need manual fixup
 }
 
-# ── Android SDK extras ──────────────────────────────────────────────────────
+# ── Fix android-sdk cmdline-tools structure broken by mise on Windows ───────
+# Windows ARM64: mise's vfox post-install hook fails to version-nest the
+# cmdline-tools directory. It extracts to cmdline-tools/bin/sdkmanager but
+# the hook expects cmdline-tools/20.0/bin/sdkmanager. Fix by moving files.
+fix_android_sdk_structure() {
+  local sdk_root="$MISE_DATA/installs/android-sdk"
+  local sdk_dir
+  sdk_dir="$(find "$sdk_root" -maxdepth 1 -type d -name "*" 2>/dev/null \
+    | grep -v "^$sdk_root$" | head -1 || true)"
+
+  if [[ -z "$sdk_dir" ]]; then
+    return 0  # Not installed yet, nothing to fix
+  fi
+
+  # Check if sdkmanager is already at the expected path
+  local cmdline_version_dir
+  cmdline_version_dir="$(find "$sdk_dir/cmdline-tools" -maxdepth 1 -type d -name "*" 2>/dev/null \
+    | grep -v "^$sdk_dir/cmdline-tools$" | head -1 || true)"
+
+  if [[ -n "$cmdline_version_dir" && -f "$cmdline_version_dir/bin/sdkmanager" ]]; then
+    return 0  # Already correct structure
+  fi
+
+  # Check if sdkmanager exists at the wrong path (no version subdir)
+  if [[ -f "$sdk_dir/cmdline-tools/bin/sdkmanager" ]]; then
+    log_warn "android-sdk cmdline-tools missing version subdirectory (Windows ARM64 vfox bug)"
+    log_info "Fixing directory structure..."
+
+    # Determine the version from the directory name (e.g., "20.0")
+    local sdk_version
+    sdk_version="$(basename "$sdk_dir")"
+
+    mkdir -p "$sdk_dir/cmdline-tools/$sdk_version"
+    # Move all contents of cmdline-tools into the version subdir
+    # (excluding the version subdir itself)
+    for item in "$sdk_dir/cmdline-tools/"*; do
+      local name
+      name="$(basename "$item")"
+      if [[ "$name" != "$sdk_version" ]]; then
+        mv "$item" "$sdk_dir/cmdline-tools/$sdk_version/"
+      fi
+    done
+
+    if [[ -f "$sdk_dir/cmdline-tools/$sdk_version/bin/sdkmanager" ]]; then
+      log_ok "android-sdk directory structure fixed"
+      # Re-run mise trust to verify and mark as installed
+      mise trust 2>/dev/null || true
+    else
+      log_error "Could not fix android-sdk structure. sdkmanager not found."
+      ls -la "$sdk_dir/cmdline-tools/" 2>/dev/null || true
+      exit 1
+    fi
+  fi
+}
+
+# ── Android SDK extras via sdkmanager ──────────────────────────────────────
 install_sdk_extras() {
   if ! command -v sdkmanager &>/dev/null; then
     log_error "sdkmanager not in PATH after mise install."
-    log_error "Try running: eval \"\$(mise activate bash)\""
     exit 1
   fi
 
@@ -214,7 +262,6 @@ main() {
   if [[ "$IS_WINDOWS" == "true" ]]; then
     log_info "Detected Windows (Git Bash)"
   fi
-  log_info "Mise data dir: ${MISE_DATA}"
 
   install_mise
 
@@ -223,6 +270,9 @@ main() {
 
   install_mise_tools "$PROJECT_ROOT"
 
+  # Fix android-sdk structure if mise broke it (Windows ARM64)
+  fix_android_sdk_structure
+
   ANDROID_HOME="$(resolve_android_home)"
   export ANDROID_HOME
   log_ok "ANDROID_HOME=${ANDROID_HOME}"
@@ -230,7 +280,6 @@ main() {
   install_sdk_extras
   create_avd
 
-  # Add adb/emulator to shell RC file
   RC_FILE="$(detect_rc)"
   log_info "Detected shell RC: ${RC_FILE}"
   ensure_path_entries "$RC_FILE" "$ANDROID_HOME"
