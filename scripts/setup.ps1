@@ -405,9 +405,17 @@ function Install-MiseTools {
     mise trust *>$null
 
 
+    # Windows fix: mise's internal mkdir -p uses CMD (not PowerShell),
+    # and CMD's mkdir doesn't understand -p. Pre-create the expected
+    # android-sdk directory structure so mkdir -p becomes a no-op.
+    if ($IsWindows -or $env:OS -match 'Windows') {
+        $androidSdkVersion = @(Get-Content '.mise.toml' | Select-String 'android-sdk' | ForEach-Object { $_ -replace '.*"([^"]+)".*', '$1' })[0]
+        $expectedDir = "$MiseData\installs\android-sdk\$androidSdkVersion\cmdline-tools\$androidSdkVersion\bin"
+        New-Item -ItemType Directory -Path $expectedDir -Force | Out-Null
+        Write-Info "Pre-created android-sdk directory: $expectedDir"
+    }
 
     Write-Info "Installing project toolchain via mise..."
-
     Write-Info "(this downloads Flutter, Android SDK, Java, Gradle, pnpm — may take a while)..."
 
     mise install 2>&1 | ForEach-Object { Write-Host "  $_" }
