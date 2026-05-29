@@ -1,2 +1,6 @@
 [tools]
-java = "21.0.2"
+java = "25.0.2"
+gradle = "9.4.1"
+android-sdk = "20"
+flutter = "3.44.0"
+pnpm = "11.4.0"
