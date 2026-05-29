@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# LeafLens — Project Setup Script (Linux / macOS)
+# LeafLens — Project Setup Script (Linux / macOS / Windows Git Bash)
 # =============================================================================
 # Installs mise, project toolchain, Android SDK extras, creates an emulator,
 # and adds adb/emulator to PATH in the appropriate shell RC file.
@@ -18,7 +18,6 @@ SDK_PACKAGES=(
   "${AVD_TARGET}"
   "build-tools;36.1.0"
 )
-MISE_DATA="${MISE_DATA:-$HOME/.local/share/mise}"
 
 # ── Colors ──────────────────────────────────────────────────────────────────
 GREEN='\033[0;32m'; YELLOW='\033[1;33m'; RED='\033[0;31m'; CYAN='\033[0;36m'; NC='\033[0m'
@@ -27,11 +26,28 @@ log_ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 
+# ── Platform detection ──────────────────────────────────────────────────────
 OS="$(uname -s)"
-if [[ "$OS" != "Linux" && "$OS" != "Darwin" ]]; then
-  log_error "Unsupported OS: $OS."
+IS_WINDOWS=false
+case "$OS" in
+  MINGW*|MSYS*|CYGWIN*) IS_WINDOWS=true ;;
+esac
+
+if [[ "$OS" != "Linux" && "$OS" != "Darwin" && "$IS_WINDOWS" != "true" ]]; then
+  log_error "Unsupported OS: $OS. Supported: Linux, macOS, Windows (Git Bash)."
   exit 1
 fi
+
+# ── Mise data directory ────────────────────────────────────────────────────
+# Windows (Git Bash) uses LOCALAPPDATA; Unix uses ~/.local/share
+if [[ "$IS_WINDOWS" == "true" ]]; then
+  DEFAULT_MISE_DATA="${LOCALAPPDATA}/mise"
+  # Convert backslashes to forward slashes for Git Bash
+  DEFAULT_MISE_DATA="${DEFAULT_MISE_DATA//\\/\/}"
+else
+  DEFAULT_MISE_DATA="$HOME/.local/share/mise"
+fi
+MISE_DATA="${MISE_DATA:-$DEFAULT_MISE_DATA}"
 
 # ── Resolve ANDROID_HOME from mise install ──────────────────────────────────
 resolve_android_home() {
@@ -48,6 +64,10 @@ resolve_android_home() {
 
 # ── Detect shell RC file ────────────────────────────────────────────────────
 detect_rc() {
+  if [[ "$IS_WINDOWS" == "true" ]]; then
+    echo "$HOME/.bashrc"
+    return
+  fi
   case "${SHELL##*/}" in
     zsh)  echo "$HOME/.zshrc" ;;
     bash)
@@ -93,13 +113,17 @@ install_mise() {
   fi
 
   log_info "mise not found — installing..."
-  if [[ "$OS" == "Darwin" ]] && command -v brew &>/dev/null; then
+
+  if [[ "$IS_WINDOWS" == "true" ]] && command -v scoop &>/dev/null; then
+    scoop install mise
+  elif [[ "$OS" == "Darwin" ]] && command -v brew &>/dev/null; then
     brew install mise
   else
     curl -fsSL https://mise.run | sh
   fi
 
-  for dir in "$HOME/.local/share/mise/bin" "$HOME/.local/bin"; do
+  # Add mise to PATH for this script's execution
+  for dir in "$MISE_DATA/bin" "$HOME/.local/bin"; do
     if [[ -x "$dir/mise" ]]; then
       export PATH="$dir:$PATH"
       break
@@ -110,13 +134,21 @@ install_mise() {
     log_error "mise installation failed. Add mise to PATH and re-run."
     exit 1
   fi
+
+  # Activate mise for this session so shims (sdkmanager, avdmanager) resolve
+  eval "$(mise activate bash 2>/dev/null)" || true
+  # Ensure shims directory is on PATH even if activate fails
+  if [[ -d "$MISE_DATA/shims" ]]; then
+    export PATH="$MISE_DATA/shims:$PATH"
+  fi
+
   log_ok "mise installed ($(mise --version))"
 }
 
 # ── Find project root ───────────────────────────────────────────────────────
 find_project_root() {
   local dir="$1"
-  while [[ "$dir" != "/" ]]; do
+  while [[ "$dir" != "" && "$dir" != "/" ]]; do
     if [[ -f "$dir/.mise.toml" ]]; then
       echo "$dir"
       return 0
@@ -139,7 +171,8 @@ install_mise_tools() {
 # ── Android SDK extras ──────────────────────────────────────────────────────
 install_sdk_extras() {
   if ! command -v sdkmanager &>/dev/null; then
-    log_error "sdkmanager not in PATH. Run 'mise install' first."
+    log_error "sdkmanager not in PATH after mise install."
+    log_error "Try running: eval \"\$(mise activate bash)\""
     exit 1
   fi
 
@@ -177,6 +210,11 @@ main() {
   echo -e "${GREEN}║        LeafLens — Environment Setup              ║${NC}"
   echo -e "${GREEN}╚══════════════════════════════════════════════════╝${NC}"
   echo ""
+
+  if [[ "$IS_WINDOWS" == "true" ]]; then
+    log_info "Detected Windows (Git Bash)"
+  fi
+  log_info "Mise data dir: ${MISE_DATA}"
 
   install_mise
 
