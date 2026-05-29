@@ -1,4 +1,4 @@
-﻿<#
+﻿﻿<#
 .SYNOPSIS
     LeafLens — Project Setup Script (Windows)
 .DESCRIPTION
@@ -6,7 +6,7 @@
     emulator, and adds adb/emulator to PATH in the PowerShell profile.
     Idempotent — safe to run multiple times.
 .NOTES
-    Requires PowerShell 5.1+. Run in a non-admin terminal.
+    Requires PowerShell 5.1+ (pwsh preferred). Run in a non-admin terminal.
 #>
 
 $ErrorActionPreference = 'Stop'
@@ -36,12 +36,67 @@ if ($IsAdmin) {
     exit 1
 }
 
-# ── Resolve ANDROID_HOME from mise install ──────────────────────────────────
+# ── Check Unix tools (mv/rm) needed by mise ─────────────────────────────────
+function Assert-UnixTools {
+    # Try common Git-for-Windows paths
+    $gitUsrBin = 'C:\Program Files\Git\usr\bin'
+    $gitUsrBinX86 = 'C:\Program Files (x86)\Git\usr\bin'
+
+    if (Get-Command mv -ErrorAction SilentlyContinue) {
+        return
+    }
+
+    Write-Info "Unix tools (mv/rm) not found — checking Git paths..."
+
+    if (Test-Path "$gitUsrBin\mv.exe") {
+        $env:Path = "$gitUsrBin;$env:Path"
+        Write-Ok "Added Git's usr/bin to PATH: $gitUsrBin"
+        return
+    }
+    if (Test-Path "$gitUsrBinX86\mv.exe") {
+        $env:Path = "$gitUsrBinX86;$env:Path"
+        Write-Ok "Added Git's usr/bin to PATH: $gitUsrBinX86"
+        return
+    }
+
+    # Git not found — offer to install Unix tools via Scoop
+    Write-Warn "Git for Windows not found or missing Unix tools (mv, rm)."
+    Write-Warn "mise requires mv/rm on Windows for extraction."
+    Write-Warn ""
+    Write-Warn "Fix options:"
+    Write-Warn "  1. Install Git for Windows with 'Use Git and optional Unix tools from the Command Prompt'"
+    Write-Warn "  2. Or run: scoop install busybox"
+    Write-Warn "  3. Manually add C:\Program Files\Git\usr\bin to your PATH"
+    Write-Warn ""
+    Write-Warn "Attempting to install busybox via Scoop as fallback..."
+
+    # Ensure Scoop is available
+    if (-not (Get-Command scoop -ErrorAction SilentlyContinue)) {
+        Write-Info "Scoop not found — installing first..."
+        Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+        Invoke-RestMethod -Uri 'https://get.scoop.sh' | Invoke-Expression
+    }
+
+    scoop install busybox *>&1 | Out-Null
+
+    if (Get-Command mv -ErrorAction SilentlyContinue) {
+        Write-Ok "busybox installed — mv/rm now available"
+        return
+    }
+
+    Write-Error "Could not install Unix tools. Install Git for Windows or busybox manually, then re-run."
+    exit 1
+}
+
+# ── Resolve ANDROID_HOME from mise install (version-agnostic) ───────────────
 function Resolve-AndroidHome {
-    $sdkDir = Get-ChildItem "$MiseData\installs\android-sdk" -Directory | Select-Object -First 1
+    $sdkDir = Get-ChildItem "$MiseData\installs\android-sdk" -Directory -ErrorAction SilentlyContinue `
+        | Sort-Object Name -Descending `
+        | Select-Object -First 1
+
     if (-not $sdkDir) {
         Write-Error "Android SDK not found under $MiseData\installs\android-sdk\"
-        Write-Error "Run 'mise install' first."
+        Write-Error "This means mise install failed for android-sdk. Check the errors above."
         exit 1
     }
     return $sdkDir.FullName
@@ -102,7 +157,7 @@ function Install-Mise {
         return
     }
     Write-Info "Installing mise via Scoop..."
-    scoop install mise *>$null
+    scoop install mise *>&1 | ForEach-Object { Write-Host "  $_" }
     if (-not (Get-Command mise -ErrorAction SilentlyContinue)) {
         Write-Error "mise installation failed."
         exit 1
@@ -123,14 +178,32 @@ function Find-ProjectRoot {
     exit 1
 }
 
-# ── mise trust + install ────────────────────────────────────────────────────
+# ── mise trust + install with progress ──────────────────────────────────────
 function Install-MiseTools {
     param([string]$ProjectRoot)
     Set-Location $ProjectRoot
+
     Write-Info "Trusting mise config..."
     mise trust *>$null
+
     Write-Info "Installing project toolchain via mise..."
+    Write-Info "(this downloads Flutter, Android SDK, Java, Gradle, pnpm — may take a while)..."
     mise install 2>&1 | ForEach-Object { Write-Host "  $_" }
+
+    # Verify key tools were installed
+    $androidSdkDir = Get-ChildItem "$MiseData\installs\android-sdk" -Directory -ErrorAction SilentlyContinue
+    $flutterDir = Get-ChildItem "$MiseData\installs\flutter" -Directory -ErrorAction SilentlyContinue
+
+    if (-not $androidSdkDir) {
+        Write-Error "android-sdk failed to install. Check the mise output above for errors."
+        Write-Error "Common cause: missing Unix tools (mv/rm) on Windows."
+        exit 1
+    }
+    if (-not $flutterDir) {
+        Write-Error "flutter failed to install. Check the mise output above."
+        exit 1
+    }
+
     Write-Ok "mise tools installed"
 }
 
@@ -151,7 +224,7 @@ function Install-SdkExtras {
             continue
         }
         Write-Info "Installing SDK package: $pkg..."
-        sdkmanager $pkg *>&1 | ForEach-Object { Write-Host "  $_" }
+        sdkmanager $pkg 2>&1 | ForEach-Object { Write-Host "  $_" }
         Write-Ok "Installed: $pkg"
     }
 }
@@ -167,9 +240,29 @@ function Create-Avd {
         Write-Ok "AVD '${AvdName}' already exists"
         return
     }
-    Write-Info "Creating AVD '${AvdName}'..."
-    'no' | avdmanager create avd -n $AvdName -k $AvdTarget -d pixel_8 -f *>&1 | ForEach-Object { Write-Host "  $_" }
+    Write-Info "Creating AVD '${AvdName}' (requires system-images;android-36)..."
+    'no' | avdmanager create avd -n $AvdName -k $AvdTarget -d pixel_8 -f 2>&1 | ForEach-Object { Write-Host "  $_" }
     Write-Ok "AVD '${AvdName}' created"
+}
+
+# ── Verify final state ──────────────────────────────────────────────────────
+function Verify-Setup {
+    $ok = $true
+
+    if (-not (Get-Command adb -ErrorAction SilentlyContinue)) {
+        Write-Warn "adb not in PATH. Run the script again or restart your terminal."
+        $ok = $false
+    }
+
+    $avdCheck = avdmanager list avd -c 2>&1
+    if ($avdCheck -notmatch "^${AvdName}$") {
+        Write-Warn "AVD '${AvdName}' not found. It may not have been created."
+        $ok = $false
+    }
+
+    if ($ok) {
+        Write-Ok "All checks passed."
+    }
 }
 
 # ── Run ─────────────────────────────────────────────────────────────────────
@@ -180,6 +273,7 @@ function Main {
     Write-Host "╚══════════════════════════════════════════════════╝" -ForegroundColor Green
     Write-Host ""
 
+    Assert-UnixTools
     Install-ScoopIfMissing
     Install-Mise
 
@@ -195,6 +289,7 @@ function Main {
     Create-Avd
 
     Ensure-PathEntries -AndroidHome $env:ANDROID_HOME
+    Verify-Setup
 
     Write-Host ""
     Write-Ok "All done."
