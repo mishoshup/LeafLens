@@ -168,49 +168,145 @@ function Assert-UnixTools {
 
 
 
-# ── Resolve ANDROID_HOME from mise install (version-agnostic) ───────────────
+# ── Read pinned android-sdk version from .mise.toml ──────────────────────────
 
-function Resolve-AndroidHome {
+# mise's global install cache ($MiseData) is shared across every project on
 
-    $sdkDir = Get-ChildItem "$MiseData\installs\android-sdk" -Directory -ErrorAction SilentlyContinue `
+# the machine, so a dev who's touched another Flutter/Android project can end
 
-        | Sort-Object Name -Descending `
+# up with multiple android-sdk versions cached. Always read the version this
 
-        | Select-Object -First 1
+# project actually pins rather than guessing from whatever is on disk (a plain
 
+# string sort of directory names, e.g., puts "9.0" ahead of "20.0").
 
+function Get-AndroidSdkVersion {
 
-    if (-not $sdkDir) {
+    $version = (Get-Content '.mise.toml' | Select-String 'android-sdk' | ForEach-Object { $_ -replace '.*"([^"]+)".*', '$1' })[0]
 
-        Write-Error "Android SDK not found under $MiseData\installs\android-sdk\"
+    if (-not $version) {
 
-        Write-Error "This means mise install failed for android-sdk. Check the errors above."
+        Write-Error "Could not find android-sdk version in .mise.toml"
 
         exit 1
 
     }
 
-    return $sdkDir.FullName
+    return $version
 
 }
 
 
 
-# ── Add PATH entries to PowerShell profile if missing ───────────────────────
+# ── Resolve ANDROID_HOME from mise install ───────────────────────────────────
 
-function Ensure-PathEntries {
+function Resolve-AndroidHome {
+
+    param([string]$Version)
+
+    # vfox's android-sdk plugin expands a major-only pin like "20" to a
+
+    # concrete "20.0" install dir. Check both forms.
+
+    foreach ($candidate in @($Version, "$Version.0")) {
+
+        $dir = Join-Path "$MiseData\installs\android-sdk" $candidate
+
+        if (Test-Path $dir -PathType Container) {
+
+            return $dir
+
+        }
+
+    }
+
+    Write-Error "Android SDK version $Version (from .mise.toml) not found under $MiseData\installs\android-sdk\"
+
+    Write-Error "This means mise install failed for android-sdk. Check the errors above."
+
+    exit 1
+
+}
+
+
+
+# ── Shim adb/fastboot/emulator into %USERPROFILE%\.local\bin ────────────────
+
+# If the user has `mise activate pwsh` in their profile (mise's standard
+
+# recommended setup, same as this project's own .zshrc), mise rebuilds PATH
+
+# from scratch on every prompt and prunes anything under its own install dir
+
+# that it doesn't itself manage — platform-tools/emulator, installed
+
+# separately via sdkmanager, aren't recognized "tool" bin dirs. Adding those
+
+# paths directly to the profile gets silently stripped moments later.
+
+# Windows symlinks need Developer Mode/admin, so use thin .cmd wrapper shims
+
+# in a directory outside mise's install tree instead — immune to the pruning.
+
+function New-SdkShims {
 
     param([string]$AndroidHome)
 
 
 
-    $lines = @(
+    $shimDir = "$env:USERPROFILE\.local\bin"
 
-        "`$env:Path = `"${AndroidHome}\platform-tools;`$env:Path`""
+    if (-not (Test-Path $shimDir)) {
 
-        "`$env:Path = `"${AndroidHome}\emulator;`$env:Path`""
+        New-Item -ItemType Directory -Path $shimDir -Force | Out-Null
+
+    }
+
+
+
+    $targets = @(
+
+        "$AndroidHome\platform-tools\adb.exe"
+
+        "$AndroidHome\platform-tools\fastboot.exe"
+
+        "$AndroidHome\emulator\emulator.exe"
 
     )
+
+
+
+    foreach ($target in $targets) {
+
+        if (Test-Path $target -PathType Leaf) {
+
+            $name = [System.IO.Path]::GetFileNameWithoutExtension($target)
+
+            $shimPath = "$shimDir\$name.cmd"
+
+            Set-Content -Path $shimPath -Value "@echo off`r`n`"$target`" %*" -Encoding ASCII
+
+            Write-Ok "Shimmed $shimPath -> $target"
+
+        }
+
+    }
+
+}
+
+
+
+# ── Ensure %USERPROFILE%\.local\bin is on PATH ───────────────────────────────
+
+# This one entry is safe to persist in the profile: it lives outside mise's
+
+# install tree, so mise's activate hook never prunes it.
+
+function Ensure-LocalBinOnPath {
+
+    $shimDir = "$env:USERPROFILE\.local\bin"
+
+    $line = "`$env:Path = `"$shimDir;`$env:Path`""
 
 
 
@@ -240,19 +336,15 @@ function Ensure-PathEntries {
 
 
 
-    foreach ($line in $lines) {
+    if ($existing -match [Regex]::Escape($line)) {
 
-        if ($existing -match [Regex]::Escape($line)) {
+        Write-Ok "Already in profile: $line"
 
-            Write-Ok "Already in profile: $line"
+    } else {
 
-        } else {
+        Add-Content -Path $profilePath -Value "`n$header`n$line"
 
-            Add-Content -Path $profilePath -Value "`n$header`n$line"
-
-            Write-Info "Added to $profilePath`: $line"
-
-        }
+        Write-Info "Added to $profilePath`: $line"
 
     }
 
@@ -409,8 +501,10 @@ function Install-MiseTools {
     # and CMD's mkdir doesn't understand -p. Pre-create the expected
     # android-sdk directory structure so mkdir -p becomes a no-op.
     if ($IsWindows -or $env:OS -match 'Windows') {
-        $androidSdkVersion = @(Get-Content '.mise.toml' | Select-String 'android-sdk' | ForEach-Object { $_ -replace '.*"([^"]+)".*', '$1' })[0]
-        $expectedDir = "$MiseData\installs\android-sdk\$androidSdkVersion\cmdline-tools\$androidSdkVersion\bin"
+        # vfox expands a major-only pin like "20" to a concrete "20.0"
+        # install dir — that's the physical path mise actually creates.
+        $expandedVersion = "$(Get-AndroidSdkVersion).0"
+        $expectedDir = "$MiseData\installs\android-sdk\$expandedVersion\cmdline-tools\$expandedVersion\bin"
         New-Item -ItemType Directory -Path $expectedDir -Force | Out-Null
         Write-Info "Pre-created android-sdk directory: $expectedDir"
     }
@@ -608,7 +702,9 @@ function Main {
 
 
 
-    $env:ANDROID_HOME = Resolve-AndroidHome
+    $androidSdkVersion = Get-AndroidSdkVersion
+
+    $env:ANDROID_HOME = Resolve-AndroidHome -Version $androidSdkVersion
 
     Write-Ok "ANDROID_HOME=$env:ANDROID_HOME"
 
@@ -620,7 +716,9 @@ function Main {
 
 
 
-    Ensure-PathEntries -AndroidHome $env:ANDROID_HOME
+    New-SdkShims -AndroidHome $env:ANDROID_HOME
+
+    Ensure-LocalBinOnPath
 
     Verify-Setup
 

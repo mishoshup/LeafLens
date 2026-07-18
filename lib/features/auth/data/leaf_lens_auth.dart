@@ -9,13 +9,13 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class LeafLensAuth {
   LeafLensAuth._();
 
-  /// Initialise with the provider's [url] and [anonKey].
+  /// Initialise with the provider's [url] and [publishableKey].
   /// Call once from main after WidgetsFlutterBinding.ensureInitialized.
   static Future<void> init({
     required String url,
-    required String anonKey,
+    required String publishableKey,
   }) async {
-    await Supabase.initialize(url: url, anonKey: anonKey);
+    await Supabase.initialize(url: url, publishableKey: publishableKey);
   }
 
   static SupabaseClient get _client => Supabase.instance.client;

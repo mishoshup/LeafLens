@@ -13,5 +13,5 @@ Future<void> initLeafLensAuth() async {
     return;
   }
 
-  await LeafLensAuth.init(url: url, anonKey: anonKey);
+  await LeafLensAuth.init(url: url, publishableKey: anonKey);
 }

@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:leaflens/core/errors/error_handler.dart';
 import 'package:leaflens/core/errors/failures.dart';
 import 'package:leaflens/core/theme/app_colors.dart';
+import 'package:leaflens/core/utils/validators.dart';
 import 'package:leaflens/features/auth/data/auth_repository.dart';
 import 'package:leaflens/shared/widgets/app_text_field.dart';
 
@@ -214,7 +215,7 @@ class _EmailField extends StatelessWidget {
       hint: 'Email',
       controller: controller,
       keyboardType: TextInputType.emailAddress,
-      validator: (v) => (v == null || v.isEmpty) ? 'Enter your email' : null,
+      validator: Validators.email,
     );
   }
 }

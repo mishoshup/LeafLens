@@ -51,17 +51,57 @@ else
 fi
 MISE_DATA="${MISE_DATA:-$DEFAULT_MISE_DATA}"
 
+# ── Read pinned android-sdk version from .mise.toml ────────────────────────
+# mise's global install cache ($MISE_DATA) is shared across every project on
+# the machine, so a dev who's touched another Flutter/Android project can end
+# up with multiple android-sdk versions cached. Always read the version this
+# project actually pins rather than guessing from whatever is on disk.
+android_sdk_version() {
+  local v
+  v="$(grep -E '^[[:space:]]*android-sdk[[:space:]]*=' "$PROJECT_ROOT/.mise.toml" | sed -E 's/.*"([^"]+)".*/\1/')"
+  if [[ -z "$v" ]]; then
+    log_error "Could not find android-sdk version in $PROJECT_ROOT/.mise.toml"
+    exit 1
+  fi
+  echo "$v"
+}
+
 # ── Resolve ANDROID_HOME from mise install ──────────────────────────────────
 resolve_android_home() {
-  local sdk_dir
-  sdk_dir="$(find "$MISE_DATA/installs/android-sdk" -maxdepth 1 -type d -name "*" 2>/dev/null \
-    | grep -v "^$MISE_DATA/installs/android-sdk$" | head -1 || true)"
-  if [[ -z "$sdk_dir" ]]; then
-    log_error "Android SDK not found under $MISE_DATA/installs/android-sdk/"
-    log_error "Run 'mise install' first."
-    return 1
-  fi
-  echo "$sdk_dir"
+  local version="$1" dir
+  # vfox's android-sdk plugin expands a major-only pin like "20" to a
+  # concrete "20.0" install dir (with a "20" symlink alongside it). The
+  # windows-arm64 manual-install path below only ever creates the expanded
+  # "20.0" form, so check both.
+  for dir in "$MISE_DATA/installs/android-sdk/$version" "$MISE_DATA/installs/android-sdk/$version.0"; do
+    if [[ -d "$dir" ]]; then
+      echo "$dir"
+      return 0
+    fi
+  done
+  log_error "Android SDK version $version (from .mise.toml) not found under $MISE_DATA/installs/android-sdk/"
+  log_error "Run 'mise install' first."
+  return 1
+}
+
+# ── Symlink adb/emulator/fastboot into ~/.local/bin ─────────────────────────
+# mise's `activate` hook rebuilds PATH from scratch on every prompt, pruning
+# anything under its own install dir that it doesn't itself manage (only
+# cmdline-tools is a recognized "tool" bin dir — platform-tools and emulator,
+# installed separately via sdkmanager, are not). Adding those paths directly
+# to a shell rc file gets silently stripped moments later by that hook.
+# Symlinking into ~/.local/bin (outside mise's install tree, so immune to the
+# pruning) survives it.
+link_sdk_binaries() {
+  local android_home="$1" target_dir="$HOME/.local/bin"
+  mkdir -p "$target_dir"
+  local bin
+  for bin in "$android_home/platform-tools/adb" "$android_home/platform-tools/fastboot" "$android_home/emulator/emulator"; do
+    if [[ -x "$bin" ]]; then
+      ln -sf "$bin" "$target_dir/$(basename "$bin")"
+      log_ok "Linked ${target_dir}/$(basename "$bin") -> ${bin}"
+    fi
+  done
 }
 
 # ── Detect shell RC file ────────────────────────────────────────────────────
@@ -80,24 +120,21 @@ detect_rc() {
   esac
 }
 
-# ── Add PATH entries to RC file if missing ───────────────────────────────────
-ensure_path_entries() {
-  local rc_file="$1" android_home="$2"
-  local entries=(
-    "export PATH=\"${android_home}/platform-tools:\$PATH\""
-    "export PATH=\"${android_home}/emulator:\$PATH\""
-  )
+# ── Ensure ~/.local/bin is on PATH ──────────────────────────────────────────
+# This one entry is safe to persist in the rc file: it lives outside mise's
+# install tree, so mise's activate hook never prunes it.
+ensure_local_bin_on_path() {
+  local rc_file="$1"
+  local entry='export PATH="$HOME/.local/bin:$PATH"'
   touch "$rc_file"
-  for entry in "${entries[@]}"; do
-    if ! grep -Fxq "$entry" "$rc_file" 2>/dev/null; then
-      echo "" >> "$rc_file"
-      echo "# Added by LeafLens setup script" >> "$rc_file"
-      echo "$entry" >> "$rc_file"
-      log_info "Added to ${rc_file}: ${entry}"
-    else
-      log_ok "Already in ${rc_file}: ${entry}"
-    fi
-  done
+  if ! grep -Fxq "$entry" "$rc_file" 2>/dev/null; then
+    echo "" >> "$rc_file"
+    echo "# Added by LeafLens setup script" >> "$rc_file"
+    echo "$entry" >> "$rc_file"
+    log_info "Added to ${rc_file}: ${entry}"
+  else
+    log_ok "Already in ${rc_file}: ${entry}"
+  fi
 }
 
 # ── Install mise if missing ─────────────────────────────────────────────────
@@ -150,7 +187,19 @@ install_mise_tools() {
   cd "$1"
   mise trust 2>/dev/null || true
   log_info "Installing project toolchain via mise..."
-  mise install || true  # android-sdk may fail on windows-arm64
+  mise install || true  # android-sdk may fail on windows-arm64, handled separately below
+
+  # mise's flutter install is a tree of symlinks into its tarball cache, not
+  # plain directories — follow symlinks (-L) when checking for it.
+  if [[ -z "$(find -L "$MISE_DATA/installs/flutter" -maxdepth 3 -name flutter -type f 2>/dev/null)" ]]; then
+    log_error "Flutter failed to install via mise. Check the output above."
+    if [[ "$IS_WINDOWS" == "true" && "$IS_ARM64" == "true" ]]; then
+      log_error "Flutter 3.44.0 has no windows-arm64 build. Add to .mise.toml:"
+      log_error '  flutter = { version = "3.44.0", platform = "windows-x64" }'
+    fi
+    exit 1
+  fi
+  log_ok "Flutter installed"
 }
 
 # ── Manual android-sdk install for Windows ARM64 ────────────────────────────
@@ -158,7 +207,7 @@ install_mise_tools() {
 # which doesn't understand the -p flag on Windows. The installation fails
 # and mise deletes everything. We install it manually instead.
 install_android_sdk_manually() {
-  local sdk_version="20.0"
+  local sdk_version="${1}.0"
   local sdk_dir="$MISE_DATA/installs/android-sdk/$sdk_version"
 
   # Check if already installed correctly
@@ -228,7 +277,7 @@ install_android_sdk_manually() {
 install_sdk_extras() {
   if ! command -v sdkmanager &>/dev/null; then
     log_error "sdkmanager not in PATH."
-    log_error "Expected at: $(resolve_android_home 2>/dev/null || echo '?')/cmdline-tools/20.0/bin/sdkmanager"
+    log_error "Expected at: $(resolve_android_home "$ANDROID_SDK_VERSION" 2>/dev/null || echo '?')/cmdline-tools/${ANDROID_SDK_VERSION}.0/bin/sdkmanager"
     exit 1
   fi
 
@@ -278,22 +327,26 @@ main() {
 
   install_mise_tools "$PROJECT_ROOT"
 
-  # Manual android-sdk install for windows-arm64 (mise vfox bug)
-  install_android_sdk_manually
+  ANDROID_SDK_VERSION="$(android_sdk_version)"
 
-  ANDROID_HOME="$(resolve_android_home)"
+  # Manual android-sdk install for windows-arm64 (mise vfox bug)
+  install_android_sdk_manually "$ANDROID_SDK_VERSION"
+
+  ANDROID_HOME="$(resolve_android_home "$ANDROID_SDK_VERSION")"
   export ANDROID_HOME
   log_ok "ANDROID_HOME=${ANDROID_HOME}"
 
   # Add cmdline-tools to PATH so sdkmanager/avdmanager resolve
-  export PATH="$ANDROID_HOME/cmdline-tools/20.0/bin:$PATH"
+  export PATH="$ANDROID_HOME/cmdline-tools/${ANDROID_SDK_VERSION}.0/bin:$PATH"
 
   install_sdk_extras
   create_avd
 
+  link_sdk_binaries "$ANDROID_HOME"
+
   RC_FILE="$(detect_rc)"
   log_info "Detected shell RC: ${RC_FILE}"
-  ensure_path_entries "$RC_FILE" "$ANDROID_HOME"
+  ensure_local_bin_on_path "$RC_FILE"
 
   echo ""
   log_ok "All done."
