@@ -354,6 +354,8 @@ function Ensure-LocalBinOnPath {
 
 # ── Check architecture compatibility ────────────────────────────────────────
 
+$script:IsArm64 = $false
+
 function Assert-ArchCompatible {
 
     $arch = (Get-CimInstance Win32_Processor | Select-Object -First 1).Architecture
@@ -362,37 +364,9 @@ function Assert-ArchCompatible {
 
     if ($arch -ne 9) { return }  # Not ARM64, no issue
 
+    $script:IsArm64 = $true
 
-
-    Write-Warn "Windows ARM64 detected — Flutter 3.44.0 in .mise.toml has no windows-arm64 build."
-
-    Write-Warn "Flutter only provides windows-x64 builds. Two options:"
-
-    Write-Warn ""
-
-    Write-Warn "  Option 1: Use Flutter's x64 build via ARM64 emulation (recommended)"
-
-    Write-Warn "    - Open .mise.toml and add under [tools]:"
-
-    Write-Warn '      flutter = { version = "3.44.0", platform = "windows-x64" }'
-
-    Write-Warn ""
-
-    Write-Warn "  Option 2: Install Flutter manually outside mise"
-
-    Write-Warn "    - Download from https://docs.flutter.dev/get-started/install/windows/mobile"
-
-    Write-Warn "    - Skip 'mise install' for flutter in the script"
-
-    Write-Warn ""
-
-    $choice = Read-Host "Continue anyway? mise will fail on flutter but may succeed on others (y/N)"
-
-    if ($choice -ne 'y') {
-
-        exit 1
-
-    }
+    Write-Warn "Windows ARM64 detected — Flutter 3.44.0 has no windows-arm64 build. Skipping Flutter (install it manually)."
 
 }
 
@@ -509,6 +483,10 @@ function Install-MiseTools {
         Write-Info "Pre-created android-sdk directory: $expectedDir"
     }
 
+    if ($script:IsArm64) {
+        $env:MISE_DISABLE_TOOLS = "flutter"
+    }
+
     Write-Info "Installing project toolchain via mise..."
     Write-Info "(this downloads Flutter, Android SDK, Java, Gradle, pnpm — may take a while)..."
 
@@ -519,8 +497,6 @@ function Install-MiseTools {
     # Verify key tools were installed
 
     $androidSdkDir = Get-ChildItem "$MiseData\installs\android-sdk" -Directory -ErrorAction SilentlyContinue
-
-    $flutterDir = Get-ChildItem "$MiseData\installs\flutter" -Directory -ErrorAction SilentlyContinue
 
 
 
@@ -534,11 +510,17 @@ function Install-MiseTools {
 
     }
 
-    if (-not $flutterDir) {
+    if (-not $script:IsArm64) {
 
-        Write-Error "flutter failed to install. Check the mise output above."
+        $flutterDir = Get-ChildItem "$MiseData\installs\flutter" -Directory -ErrorAction SilentlyContinue
 
-        exit 1
+        if (-not $flutterDir) {
+
+            Write-Error "flutter failed to install. Check the mise output above."
+
+            exit 1
+
+        }
 
     }
 
@@ -733,6 +715,12 @@ function Main {
     Write-Host "Then:  emulator -avd $AvdName"
 
     Write-Host "       adb devices"
+
+    if ($script:IsArm64) {
+
+        Write-Warn "Flutter was skipped (no windows-arm64 build) — install it manually."
+
+    }
 
     Write-Host ""
 
