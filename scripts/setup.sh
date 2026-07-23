@@ -187,16 +187,24 @@ install_mise_tools() {
   cd "$1"
   mise trust 2>/dev/null || true
   log_info "Installing project toolchain via mise..."
+
+  # Flutter has no windows-arm64 build. Skip it for this run only (env var,
+  # not .mise.toml) so x64/Linux/macOS contributors are unaffected.
+  if [[ "$IS_WINDOWS" == "true" && "$IS_ARM64" == "true" ]]; then
+    export MISE_DISABLE_TOOLS=flutter
+    log_warn "Windows ARM64 detected — skipping Flutter (no arm64 build). Install it manually."
+  fi
+
   mise install || true  # android-sdk may fail on windows-arm64, handled separately below
+
+  if [[ "$IS_WINDOWS" == "true" && "$IS_ARM64" == "true" ]]; then
+    return
+  fi
 
   # mise's flutter install is a tree of symlinks into its tarball cache, not
   # plain directories — follow symlinks (-L) when checking for it.
   if [[ -z "$(find -L "$MISE_DATA/installs/flutter" -maxdepth 3 -name flutter -type f 2>/dev/null)" ]]; then
     log_error "Flutter failed to install via mise. Check the output above."
-    if [[ "$IS_WINDOWS" == "true" && "$IS_ARM64" == "true" ]]; then
-      log_error "Flutter 3.44.0 has no windows-arm64 build. Add to .mise.toml:"
-      log_error '  flutter = { version = "3.44.0", platform = "windows-x64" }'
-    fi
     exit 1
   fi
   log_ok "Flutter installed"
@@ -353,6 +361,9 @@ main() {
   log_info "Restart your terminal or run: source ${RC_FILE}"
   log_info "Then:  emulator -avd ${AVD_NAME}"
   log_info "       adb devices"
+  if [[ "$IS_WINDOWS" == "true" && "$IS_ARM64" == "true" ]]; then
+    log_warn "Flutter was skipped (no windows-arm64 build) — install it manually."
+  fi
   echo ""
 }
 
