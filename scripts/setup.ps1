@@ -24,6 +24,13 @@ $ErrorActionPreference = 'Stop'
 
 $ProgressPreference = 'SilentlyContinue'
 
+# mise (and other tools it shells out to) write UTF-8 output, including a ✓
+# checkmark on success. Without this, Windows PowerShell decodes/renders that
+# through the legacy console codepage and shows mojibake ("Γ£ô") instead.
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
+chcp 65001 | Out-Null
+
 
 
 # ── Config ──────────────────────────────────────────────────────────────────
@@ -182,11 +189,27 @@ function Assert-UnixTools {
 
 function Get-AndroidSdkVersion {
 
-    $version = (Get-Content '.mise.toml' | Select-String 'android-sdk' | ForEach-Object { $_ -replace '.*"([^"]+)".*', '$1' })[0]
+    $version = @(Get-Content '.mise.toml' | Select-String 'android-sdk' | ForEach-Object { $_ -replace '.*"([^"]+)".*', '$1' })[0]
 
     if (-not $version) {
 
         Write-Error "Could not find android-sdk version in .mise.toml"
+
+        exit 1
+
+    }
+
+    return $version
+
+}
+
+function Get-JavaVersion {
+
+    $version = @(Get-Content '.mise.toml' | Select-String '^\s*java\s*=' | ForEach-Object { $_ -replace '.*"([^"]+)".*', '$1' })[0]
+
+    if (-not $version) {
+
+        Write-Error "Could not find java version in .mise.toml"
 
         exit 1
 
@@ -360,9 +383,9 @@ function Assert-ArchCompatible {
 
     $arch = (Get-CimInstance Win32_Processor | Select-Object -First 1).Architecture
 
-    # 9 = ARM64, 0 = x86, 9 = ARM64, 12 = x64 (AMD64)
+    # 0 = x86, 5 = ARM, 9 = x64 (AMD64), 12 = ARM64
 
-    if ($arch -ne 9) { return }  # Not ARM64, no issue
+    if ($arch -ne 12) { return }  # Not ARM64, no issue
 
     $script:IsArm64 = $true
 
@@ -434,7 +457,7 @@ function Install-Mise {
 
 function Find-ProjectRoot {
 
-    $dir = Get-Location
+    $dir = (Get-Location).Path
 
     while ($dir) {
 
@@ -444,7 +467,15 @@ function Find-ProjectRoot {
 
         }
 
-        $dir = $dir.Parent
+        $parent = Split-Path $dir -Parent
+
+        if ($parent -eq $dir) {
+
+            break
+
+        }
+
+        $dir = $parent
 
     }
 
@@ -468,29 +499,34 @@ function Install-MiseTools {
 
     Write-Info "Trusting mise config..."
 
+    $prevEap = $ErrorActionPreference
+
+    $ErrorActionPreference = 'Continue'
+
     mise trust *>$null
 
+    $ErrorActionPreference = $prevEap
 
-    # Windows fix: mise's internal mkdir -p uses CMD (not PowerShell),
-    # and CMD's mkdir doesn't understand -p. Pre-create the expected
-    # android-sdk directory structure so mkdir -p becomes a no-op.
-    if ($IsWindows -or $env:OS -match 'Windows') {
-        # vfox expands a major-only pin like "20" to a concrete "20.0"
-        # install dir — that's the physical path mise actually creates.
-        $expandedVersion = "$(Get-AndroidSdkVersion).0"
-        $expectedDir = "$MiseData\installs\android-sdk\$expandedVersion\cmdline-tools\$expandedVersion\bin"
-        New-Item -ItemType Directory -Path $expectedDir -Force | Out-Null
-        Write-Info "Pre-created android-sdk directory: $expectedDir"
-    }
 
     if ($script:IsArm64) {
         $env:MISE_DISABLE_TOOLS = "flutter"
+        # openjdk.org (mise's default shorthand vendor) publishes no windows-arm64
+        # build for any Java version. Microsoft's OpenJDK build does.
+        $env:MISE_JAVA_SHORTHAND_VENDOR = "microsoft"
     }
 
     Write-Info "Installing project toolchain via mise..."
     Write-Info "(this downloads Flutter, Android SDK, Java, Gradle, pnpm — may take a while)..."
 
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
     mise install 2>&1 | ForEach-Object { Write-Host "  $_" }
+    $ErrorActionPreference = $prevEap
+
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "mise install failed (exit code $LASTEXITCODE). Check the output above for errors."
+        exit 1
+    }
 
 
 
@@ -548,11 +584,36 @@ function Install-SdkExtras {
 
     Write-Info "Accepting SDK licenses..."
 
-    'y' * 10 | sdkmanager --licenses *>$null
+    # A plain PowerShell pipe into sdkmanager.bat (a batch-file-launched Java
+    # console app) silently drops everything past the first line of stdin —
+    # only the first license ever gets accepted. Routing through cmd's native
+    # file-based `<` redirection delivers every line reliably.
+    $licenseAnswers = Join-Path $env:TEMP 'leaflens_sdk_license_answers.txt'
+    (1..20 | ForEach-Object { 'y' }) -join "`n" | Set-Content -Path $licenseAnswers -Encoding ascii -NoNewline
+
+    $prevEap = $ErrorActionPreference
+
+    $ErrorActionPreference = 'Continue'
+
+    cmd /c "sdkmanager --licenses < `"$licenseAnswers`"" *>$null
+
+    $ErrorActionPreference = $prevEap
+
+    Remove-Item -Path $licenseAnswers -ErrorAction SilentlyContinue
 
 
 
-    foreach ($pkg in $SdkPackages) {
+    $packagesToInstall = $SdkPackages
+
+    if ($script:IsArm64) {
+        # Google has never published a windows-arm64 emulator binary (verified
+        # against the official repository2-3.xml: linux/x64, macosx/x64,
+        # macosx/aarch64, windows/x64 only — no windows/aarch64). Installing
+        # the emulator package or its arm64 system image is pointless here.
+        $packagesToInstall = $packagesToInstall | Where-Object { $_ -ne 'emulator' -and $_ -ne $AvdTarget }
+    }
+
+    foreach ($pkg in $packagesToInstall) {
 
         $installed = sdkmanager --list 2>&1
 
@@ -626,13 +687,17 @@ function Verify-Setup {
 
 
 
-    $avdCheck = avdmanager list avd -c 2>&1
+    if (-not $script:IsArm64) {
 
-    if ($avdCheck -notmatch "^${AvdName}$") {
+        $avdCheck = avdmanager list avd -c 2>&1
 
-        Write-Warn "AVD '${AvdName}' not found. It may not have been created."
+        if ($avdCheck -notmatch "^${AvdName}$") {
 
-        $ok = $false
+            Write-Warn "AVD '${AvdName}' not found. It may not have been created."
+
+            $ok = $false
+
+        }
 
     }
 
@@ -684,17 +749,50 @@ function Main {
 
 
 
+    $javaVersion = Get-JavaVersion
+
+    $javaHome = "$MiseData\installs\java\$javaVersion"
+
+    if (-not (Test-Path "$javaHome\bin\java.exe" -PathType Leaf)) {
+        Write-Error "java.exe not found under $javaHome. Check the mise output above for errors."
+        exit 1
+    }
+
+    $env:JAVA_HOME = $javaHome
+
+    $env:Path = "$javaHome\bin;$env:Path"
+
+    Write-Ok "JAVA_HOME=$env:JAVA_HOME"
+
+
+
     $androidSdkVersion = Get-AndroidSdkVersion
 
     $env:ANDROID_HOME = Resolve-AndroidHome -Version $androidSdkVersion
 
     Write-Ok "ANDROID_HOME=$env:ANDROID_HOME"
 
+    $cmdlineToolsBin = Get-ChildItem "$env:ANDROID_HOME\cmdline-tools" -Directory -ErrorAction SilentlyContinue |
+        ForEach-Object { Join-Path $_.FullName 'bin' } |
+        Where-Object { Test-Path $_ -PathType Container } |
+        Select-Object -First 1
+
+    if (-not $cmdlineToolsBin) {
+        Write-Error "cmdline-tools bin directory not found under $env:ANDROID_HOME\cmdline-tools"
+        exit 1
+    }
+
+    $env:Path = "$cmdlineToolsBin;$env:Path"
+
 
 
     Install-SdkExtras
 
-    Create-Avd
+    if ($script:IsArm64) {
+        Write-Warn "Emulator/AVD skipped (no windows-arm64 emulator build exists). Use a physical device over adb instead."
+    } else {
+        Create-Avd
+    }
 
 
 
@@ -712,9 +810,17 @@ function Main {
 
     Write-Host "Restart your terminal or run: . `$PROFILE"
 
-    Write-Host "Then:  emulator -avd $AvdName"
+    if ($script:IsArm64) {
 
-    Write-Host "       adb devices"
+        Write-Host "Then:  adb devices  (connect a physical device — no emulator on windows-arm64)"
+
+    } else {
+
+        Write-Host "Then:  emulator -avd $AvdName"
+
+        Write-Host "       adb devices"
+
+    }
 
     if ($script:IsArm64) {
 
