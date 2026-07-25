@@ -762,7 +762,9 @@ function Main {
 
     $env:Path = "$javaHome\bin;$env:Path"
 
-    Write-Ok "JAVA_HOME=$env:JAVA_HOME"
+    [Environment]::SetEnvironmentVariable('JAVA_HOME', $javaHome, 'User')
+
+    Write-Ok "JAVA_HOME=$env:JAVA_HOME (persisted for new terminals)"
 
 
 
@@ -770,7 +772,13 @@ function Main {
 
     $env:ANDROID_HOME = Resolve-AndroidHome -Version $androidSdkVersion
 
-    Write-Ok "ANDROID_HOME=$env:ANDROID_HOME"
+    $env:ANDROID_SDK_ROOT = $env:ANDROID_HOME
+
+    [Environment]::SetEnvironmentVariable('ANDROID_HOME', $env:ANDROID_HOME, 'User')
+
+    [Environment]::SetEnvironmentVariable('ANDROID_SDK_ROOT', $env:ANDROID_HOME, 'User')
+
+    Write-Ok "ANDROID_HOME=$env:ANDROID_HOME (persisted for new terminals)"
 
     $cmdlineToolsBin = Get-ChildItem "$env:ANDROID_HOME\cmdline-tools" -Directory -ErrorAction SilentlyContinue |
         ForEach-Object { Join-Path $_.FullName 'bin' } |
